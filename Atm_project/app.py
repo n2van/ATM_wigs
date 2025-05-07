@@ -126,6 +126,7 @@ def update_face_visibility(mode):
         return [gr.update(visible=True)] * 8
 
 # --- UI với CSS tùy chỉnh ---
+# --- UI với CSS tùy chỉnh ---
 custom_css = """
 body {
     background-color: #f8fafc;
@@ -142,6 +143,10 @@ body {
     padding: 20px 0;
     margin-bottom: 20px;
     border-bottom: 1px solid #e2e8f0;
+    background-color: #1e40af; /* Màu xanh dương đậm cho header */
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .header-logo {
@@ -149,19 +154,28 @@ body {
     justify-content: center;
     align-items: center;
     margin-bottom: 10px;
+    background-color: #3b82f6; /* Màu xanh dương sáng hơn cho logo */
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    margin: 0 auto 15px auto;
+    padding: 10px;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    border: 3px solid white;
 }
 
 .header-title {
     font-size: 2.5rem;
     font-weight: bold;
-    color: #3b82f6;
+    color: white;
     margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .header-subtitle {
     font-size: 1.2rem;
-    color: #1e293b;
-    opacity: 0.7;
+    color: #bfdbfe; /* Màu xanh dương nhạt cho subtitle */
+    margin-bottom: 10px;
 }
 
 .input-panel {
@@ -199,8 +213,8 @@ body {
     font-weight: bold;
     font-size: 1.2rem;
     margin-bottom: 10px;
-    color: #3b82f6;
-    border-bottom: 2px solid #06b6d4;
+    color: #1e40af; /* Màu xanh dương đậm cho tiêu đề */
+    border-bottom: 2px solid #3b82f6;
     padding-bottom: 5px;
     display: inline-block;
 }
@@ -214,19 +228,28 @@ body {
     color: #1e293b;
     opacity: 0.7;
 }
+
+/* Thêm màu sắc blue cho các nút */
+button.primary {
+    background-color: #2563eb !important;
+}
+
+button.primary:hover {
+    background-color: #1d4ed8 !important;
+}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
-theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
+theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
 
 with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
     # Logo and Header
     try:
         with open("Logo.png", "rb") as f:
             icon_data = base64.b64encode(f.read()).decode()
-        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:120px;height:120px;">'
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
     except FileNotFoundError:
-        icon_html = '<div style="font-size: 3rem; color: #3b82f6;">💇</div>'
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
     
     gr.HTML(f"""
     <div class="header-container">
