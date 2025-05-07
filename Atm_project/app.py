@@ -158,7 +158,7 @@ def handle_tif_preview(filepath):
 theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
 
 with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
-    with open("LOGO_ATMwigs01.png", "rb") as f:
+    with open("Logo.png", "rb") as f:
         icon_data = base64.b64encode(f.read()).decode()
     icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:175px;height:85px;">'
 
@@ -166,7 +166,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         gr.Markdown(f"""
         <div style="display: flex; align-items: center;">
         {icon_html}
-        # <span style="font-size: 2em; font-weight: bold; color:#2563eb;">ATMwigs</span>
+        /*<span style="font-size: 2em; font-weight: bold; color:#2563eb;">ATMwigs</span>*/
         </div>
         """)
 
@@ -239,140 +239,140 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
 
         
     # --- TIF MODE ---
-    with gr.Tab("TIFF Mode"):
-        with gr.Row():
-            tif_input = gr.File(label="Original TIF", file_types=[".tif", ".tiff"])
-            tif_preview = gr.Image(label="TIF Preview (Cover Page)", type="filepath")
-            tif_output_preview = gr.Image(label="Refaced TIF Preview (Cover Page)", type="filepath")
-            tif_output_file = gr.File(label="Refaced TIF (Download)", interactive=False)
+    # with gr.Tab("TIFF Mode"):
+    #     with gr.Row():
+    #         tif_input = gr.File(label="Original TIF", file_types=[".tif", ".tiff"])
+    #         tif_preview = gr.Image(label="TIF Preview (Cover Page)", type="filepath")
+    #         tif_output_preview = gr.Image(label="Refaced TIF Preview (Cover Page)", type="filepath")
+    #         tif_output_file = gr.File(label="Refaced TIF (Download)", interactive=False)
 
-        with gr.Row():
-            face_mode_tif = gr.Radio(
-                choices=["Single Face", "Multiple Faces", "Faces By Match"],
-                value="Single Face",
-                label="Replacement Mode"
-            )
-            partial_reface_ratio_tif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-            tif_btn = gr.Button("Reface TIF", variant="primary")
+    #     with gr.Row():
+    #         face_mode_tif = gr.Radio(
+    #             choices=["Single Face", "Multiple Faces", "Faces By Match"],
+    #             value="Single Face",
+    #             label="Replacement Mode"
+    #         )
+    #         partial_reface_ratio_tif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
+    #         tif_btn = gr.Button("Reface TIF", variant="primary")
 
-        origin_tif, destination_tif, thresholds_tif, face_tabs_tif = [], [], [], []
+    #     origin_tif, destination_tif, thresholds_tif, face_tabs_tif = [], [], [], []
 
-        for i in range(num_faces):
-            with gr.Tab(f"Face #{i+1}") as tab:
-                with gr.Row():
-                    origin = gr.Image(label="Face to replace")
-                    destination = gr.Image(label="Destination face")
-                threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-            origin_tif.append(origin)
-            destination_tif.append(destination)
-            thresholds_tif.append(threshold)
-            face_tabs_tif.append(tab)
+    #     for i in range(num_faces):
+    #         with gr.Tab(f"Face #{i+1}") as tab:
+    #             with gr.Row():
+    #                 origin = gr.Image(label="Face to replace")
+    #                 destination = gr.Image(label="Destination face")
+    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
+    #         origin_tif.append(origin)
+    #         destination_tif.append(destination)
+    #         thresholds_tif.append(threshold)
+    #         face_tabs_tif.append(tab)
 
-        face_mode_tif.change(
-            fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_tif, origin_tif),
-            inputs=[face_mode_tif],
-            outputs=face_tabs_tif + origin_tif
-        )
+    #     face_mode_tif.change(
+    #         fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_tif, origin_tif),
+    #         inputs=[face_mode_tif],
+    #         outputs=face_tabs_tif + origin_tif
+    #     )
 
-        demo.load(
-            fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_tif, origin_tif),
-            inputs=None,
-            outputs=face_tabs_tif + origin_tif
-        )
+    #     demo.load(
+    #         fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_tif, origin_tif),
+    #         inputs=None,
+    #         outputs=face_tabs_tif + origin_tif
+    #     )
 
-        def process_tif(tif_path, *vars):
-            original_img = Image.open(tif_path)
-            if hasattr(original_img, "n_frames") and original_img.n_frames > 1:
-                original_img.seek(0)
-            temp_preview_path = os.path.join("./tmp", f"tif_preview_{int(time.time() * 1000)}.jpg")
-            original_img.convert('RGB').save(temp_preview_path)
+    #     def process_tif(tif_path, *vars):
+    #         original_img = Image.open(tif_path)
+    #         if hasattr(original_img, "n_frames") and original_img.n_frames > 1:
+    #             original_img.seek(0)
+    #         temp_preview_path = os.path.join("./tmp", f"tif_preview_{int(time.time() * 1000)}.jpg")
+    #         original_img.convert('RGB').save(temp_preview_path)
 
-            refaced_path = run_image(tif_path, *vars)
+    #         refaced_path = run_image(tif_path, *vars)
 
-            refaced_img = Image.open(refaced_path)
-            if hasattr(refaced_img, "n_frames") and refaced_img.n_frames > 1:
-                refaced_img.seek(0)
-            temp_refaced_preview_path = os.path.join("./tmp", f"refaced_tif_preview_{int(time.time() * 1000)}.jpg")
-            refaced_img.convert('RGB').save(temp_refaced_preview_path)
+    #         refaced_img = Image.open(refaced_path)
+    #         if hasattr(refaced_img, "n_frames") and refaced_img.n_frames > 1:
+    #             refaced_img.seek(0)
+    #         temp_refaced_preview_path = os.path.join("./tmp", f"refaced_tif_preview_{int(time.time() * 1000)}.jpg")
+    #         refaced_img.convert('RGB').save(temp_refaced_preview_path)
 
-            return temp_preview_path, temp_refaced_preview_path, refaced_path
+    #         return temp_preview_path, temp_refaced_preview_path, refaced_path
 
-        tif_btn.click(
-            fn=lambda tif_path, *args: process_tif(tif_path, *args),
-            inputs=[tif_input] + origin_tif + destination_tif + thresholds_tif + [face_mode_tif, partial_reface_ratio_tif],
-            outputs=[tif_preview, tif_output_preview, tif_output_file]
-        )
+    #     tif_btn.click(
+    #         fn=lambda tif_path, *args: process_tif(tif_path, *args),
+    #         inputs=[tif_input] + origin_tif + destination_tif + thresholds_tif + [face_mode_tif, partial_reface_ratio_tif],
+    #         outputs=[tif_preview, tif_output_preview, tif_output_file]
+    #     )
 
-        tif_input.change(
-            fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces),
-            inputs=tif_input,
-            outputs=origin_tif
-        )
+    #     tif_input.change(
+    #         fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces),
+    #         inputs=tif_input,
+    #         outputs=origin_tif
+    #     )
 
-        tif_input.change(
-            fn=handle_tif_preview,
-            inputs=tif_input,
-            outputs=tif_preview
-        )
+    #     tif_input.change(
+    #         fn=handle_tif_preview,
+    #         inputs=tif_input,
+    #         outputs=tif_preview
+    #     )
         
-        tif_input.change(fn=lambda _: 0.0, inputs=tif_input, outputs=partial_reface_ratio_tif)
+    #     tif_input.change(fn=lambda _: 0.0, inputs=tif_input, outputs=partial_reface_ratio_tif)
 
 
-    # --- VIDEO MODE ---
-    with gr.Tab("Video Mode"):
-        with gr.Row():
-            video_input = gr.Video(label="Original video", format="mp4")
-            video_output = gr.Video(label="Refaced Video", interactive=False, format="mp4")
+    # # --- VIDEO MODE ---
+    # with gr.Tab("Video Mode"):
+    #     with gr.Row():
+    #         video_input = gr.Video(label="Original video", format="mp4")
+    #         video_output = gr.Video(label="Refaced Video", interactive=False, format="mp4")
 
-        with gr.Row():
-            face_mode_video = gr.Radio(
-                choices=["Single Face", "Multiple Faces", "Faces By Match"],
-                value="Single Face",
-                label="Replacement Mode"
-            )
-            partial_reface_ratio_video = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-            video_btn = gr.Button("Reface Video", variant="primary")
+    #     with gr.Row():
+    #         face_mode_video = gr.Radio(
+    #             choices=["Single Face", "Multiple Faces", "Faces By Match"],
+    #             value="Single Face",
+    #             label="Replacement Mode"
+    #         )
+    #         partial_reface_ratio_video = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
+    #         video_btn = gr.Button("Reface Video", variant="primary")
 
-        preview_checkbox_video = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
+    #     preview_checkbox_video = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
 
-        origin_video, destination_video, thresholds_video, face_tabs_video = [], [], [], []
+    #     origin_video, destination_video, thresholds_video, face_tabs_video = [], [], [], []
 
-        for i in range(num_faces):
-            with gr.Tab(f"Face #{i+1}") as tab:
-                with gr.Row():
-                    origin = gr.Image(label="Face to replace")
-                    destination = gr.Image(label="Destination face")
-                threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-            origin_video.append(origin)
-            destination_video.append(destination)
-            thresholds_video.append(threshold)
-            face_tabs_video.append(tab)
+    #     for i in range(num_faces):
+    #         with gr.Tab(f"Face #{i+1}") as tab:
+    #             with gr.Row():
+    #                 origin = gr.Image(label="Face to replace")
+    #                 destination = gr.Image(label="Destination face")
+    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
+    #         origin_video.append(origin)
+    #         destination_video.append(destination)
+    #         thresholds_video.append(threshold)
+    #         face_tabs_video.append(tab)
 
-        face_mode_video.change(
-            fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_video, origin_video),
-            inputs=[face_mode_video],
-            outputs=face_tabs_video + origin_video
-        )
+    #     face_mode_video.change(
+    #         fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_video, origin_video),
+    #         inputs=[face_mode_video],
+    #         outputs=face_tabs_video + origin_video
+    #     )
 
-        demo.load(
-            fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_video, origin_video),
-            inputs=None,
-            outputs=face_tabs_video + origin_video
-        )
+    #     demo.load(
+    #         fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_video, origin_video),
+    #         inputs=None,
+    #         outputs=face_tabs_video + origin_video
+    #     )
         
-        video_input.change(
-            fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces, isvideo=True),
-            inputs=video_input,
-            outputs=origin_video
-        )
+    #     video_input.change(
+    #         fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces, isvideo=True),
+    #         inputs=video_input,
+    #         outputs=origin_video
+    #     )
         
-        video_input.change(fn=lambda _: 0.0, inputs=video_input, outputs=partial_reface_ratio_video)
+    #     video_input.change(fn=lambda _: 0.0, inputs=video_input, outputs=partial_reface_ratio_video)
 
-        video_btn.click(
-            fn=lambda *args: run(*args),
-            inputs=[video_input] + origin_video + destination_video + thresholds_video + [preview_checkbox_video, face_mode_video, partial_reface_ratio_video],
-            outputs=[video_output, gr.File(visible=False)]
-        )
+    #     video_btn.click(
+    #         fn=lambda *args: run(*args),
+    #         inputs=[video_input] + origin_video + destination_video + thresholds_video + [preview_checkbox_video, face_mode_video, partial_reface_ratio_video],
+    #         outputs=[video_output, gr.File(visible=False)]
+    #     )
 
 # --- ngrok connect (optional) ---
 if args.ngrok:
@@ -386,4 +386,4 @@ if args.ngrok:
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
 
 # --- Launch app ---
-demo.queue().launch(favicon_path="LOGO_ATMwigs01.png", show_error=True, share=args.share_gradio, server_name=args.server_name, server_port=args.server_port)
+demo.queue().launch(favicon_path="Logo.png", show_error=True, share=args.share_gradio, server_name=args.server_name, server_port=args.server_port)
