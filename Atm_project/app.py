@@ -175,7 +175,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         with gr.Row():
             image_input = gr.Image(label="Original image", type="filepath")
             image_output = gr.Image(label="Refaced image", interactive=False, type="filepath")
-
+            image_btn = gr.Button("Reface Image", variant="primary")
         # with gr.Row():
         #     face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
         #     partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
