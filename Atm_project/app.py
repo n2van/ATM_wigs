@@ -177,22 +177,22 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
             image_output = gr.Image(label="Refaced image", interactive=False, type="filepath")
             image_btn = gr.Button("Reface Image", variant="primary")
         # with gr.Row():
-        #     face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
-        #     partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-        #     image_btn = gr.Button("Reface Image", variant="primary")
+        face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
+        partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
+        image_btn = gr.Button("Reface Image", variant="primary")
         face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
         origin_image, destination_image, thresholds_image, face_tabs_image = [], [], [], []
 
-        # for i in range(num_faces):
-        #     with gr.Tab(f"Face #{i+1}") as tab:
-        #         with gr.Row():
-        #             origin = gr.Image(label="Face to replace")
-        #             destination = gr.Image(label="Destination face")
-        #         threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=0.5, value=0.0)
-        #     origin_image.append(origin)
-        #     destination_image.append(destination)
-        #     thresholds_image.append(threshold)
-        #     face_tabs_image.append(tab)
+        for i in range(num_faces):
+            with gr.Tab(f"Face #{i+1}") as tab:
+                with gr.Row():
+                    origin = gr.Image(label="Face to replace")
+                    destination = gr.Image(label="Destination face")
+                threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=0.5, value=0.0)
+            origin_image.append(origin)
+            destination_image.append(destination)
+            thresholds_image.append(threshold)
+            face_tabs_image.append(tab)
 
         face_mode_image.change(fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_image, origin_image), inputs=[face_mode_image], outputs=face_tabs_image + origin_image)
         demo.load(fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_image, origin_image), inputs=None, outputs=face_tabs_image + origin_image)
