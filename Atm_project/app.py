@@ -14,7 +14,7 @@ import pyfiglet
 import shutil
 import time
 
-print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("ATMwigs") + "\033[0m")
+print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("ATM wigs") + "\033[0m")
 
 def cleanup_temp(folder_path):
     try:
@@ -160,13 +160,13 @@ theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
 with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
     with open("Logo.png", "rb") as f:
         icon_data = base64.b64encode(f.read()).decode()
-    icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:175px;height:85px;">'
+    icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:140px;height:140px;">'
 
     with gr.Row():
         gr.Markdown(f"""
         <div style="display: flex; align-items: center;">
         {icon_html}
-        /*<span style="font-size: 2em; font-weight: bold; color:#2563eb;">ATMwigs</span>*/
+        
         </div>
         """)
 
