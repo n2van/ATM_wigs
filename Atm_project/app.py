@@ -180,7 +180,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         #     face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
         #     partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
         #     image_btn = gr.Button("Reface Image", variant="primary")
-
+        face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
         origin_image, destination_image, thresholds_image, face_tabs_image = [], [], [], []
 
         # for i in range(num_faces):
