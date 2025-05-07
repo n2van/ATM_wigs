@@ -187,7 +187,7 @@ class Refacer:
 
         if not os.path.exists(model_path):
             print(f"Model {model_path} not found. Downloading from HuggingFace...")
-            url = "https://cdn-lfs-us-1.hf.co/repos/a3/7f/a37ffc80afcedf1d6b3970f7c59503d4bf7ca6e4df17b8c45c942021e91cab5b/e4a3f08c753cb72d04e10aa0f7dbe3deebbf39567d4ead6dce08e98aa49e16af?response-content-disposition=attachment%3B+filename*%3DUTF-8%27%27inswapper_128.onnx%3B+filename%3D%22inswapper_128.onnx%22%3B&Expires=1746595145&Policy=eyJTdGF0ZW1lbnQiOlt7IkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc0NjU5NTE0NX19LCJSZXNvdXJjZSI6Imh0dHBzOi8vY2RuLWxmcy11cy0xLmhmLmNvL3JlcG9zL2EzLzdmL2EzN2ZmYzgwYWZjZWRmMWQ2YjM5NzBmN2M1OTUwM2Q0YmY3Y2E2ZTRkZjE3YjhjNDVjOTQyMDIxZTkxY2FiNWIvZTRhM2YwOGM3NTNjYjcyZDA0ZTEwYWEwZjdkYmUzZGVlYmJmMzk1NjdkNGVhZDZkY2UwOGU5OGFhNDllMTZhZj9yZXNwb25zZS1jb250ZW50LWRpc3Bvc2l0aW9uPSoifV19&Signature=jxX7LJMSXb%7EuBlzvqKJHygJQcAvOpsiwsCL6BRwXoqM-aZKL0YLW5brSsrsgq5bNdJZQMAWjMT1cnfD2lAccZv5U7Fm4Pf3knRgdFf-eq4PnRo87BRdOR89dTvWlcoItxi3qH9ZfEKmQF-NFjflD5DVO6rQuZGC8oVEVCWLh-vX2hAWKUAYO9FDg%7EnJS5MVSI95og0f-rKyogGLQI5YSw32sM0XFktzdzUL4oL3m4UwEagCPa96woZFn4rqPMbgG-8buMQ6CXDAP2e34W8PieKOFijvpL5HbJq1PRfhcegcQwdSDf%7Ed2LUtYXVVBG3H43hfPJdHi5y%7EQJA--Cp3NXg__&Key-Pair-Id=K24J24Z295AEI9"
+            url = "https://huggingface.co/VanNguyen1214/models_swap_face/resolve/main/inswapper_128.onnx"
             try:
                 self.__download_with_progress(url, model_path)
                 print(f"Downloaded {model_path}")
