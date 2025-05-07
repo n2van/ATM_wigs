@@ -32,7 +32,7 @@ if not os.path.exists("./tmp"):
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
-parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
+parser.add_argument("--max_num_faces", type=int, default=1)
 parser.add_argument("--force_cpu", default=False, action="store_true")
 parser.add_argument("--share_gradio", default=False, action="store_true")
 parser.add_argument("--server_name", type=str, default="127.0.0.1")
@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 # Initialize
 refacer = Refacer(force_cpu=args.force_cpu, colab_performance=args.colab_performance)
-num_faces = args.max_num_faces  # This will now be 1
+num_faces = args.max_num_faces
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -52,18 +52,18 @@ def create_dummy_image():
     dummy.save(temp_file.name)
     return temp_file.name
 
-def run_image(image_path, destination):
-    # Simplified for single wig mode
+def run_image(image_path, wig_path):
+    # Đơn giản hóa hàm với chỉ một tóc giả
     face_mode = "Single Face"
     partial_reface_ratio = 0.0
     disable_similarity = True
     multiple_faces_mode = False
 
     faces = []
-    if destination is not None:
+    if wig_path is not None:
         faces.append({
             'origin': None,
-            'destination': destination,
+            'destination': wig_path,
             'threshold': 0.0
         })
 
@@ -109,12 +109,7 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=1, isvideo=False):
             except Exception as e:
                 print(f"Warning: Could not delete temp file {temp_image_path}: {e}")
 
-# Simplified for single face
-def distribute_faces(filepath):
-    faces = extract_faces_auto(filepath, refacer, max_faces=1)
-    return faces[0]
-
-# --- UI với CSS tùy chỉnh ---
+# CSS tùy chỉnh
 custom_css = """
 body {
     background-color: #f8fafc;
@@ -244,31 +239,29 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
     # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
-        # Main layout with 3 equal columns
+        # Main layout with 2 columns
         with gr.Row():
             # Input Column
             with gr.Column(scale=1, elem_classes="input-panel"):
                 gr.Markdown('<div class="section-title">Input Image</div>')
                 image_input = gr.Image(label="Original face", type="filepath", height=400)
             
-            # Wig Column
-            with gr.Column(scale=1, elem_classes="face-container"):
-                gr.Markdown('<div class="section-title">Wig to Try</div>')
-                dest_img = gr.Image(label="Wig", height=400)  # Just one wig
-            
             # Output Column
             with gr.Column(scale=1, elem_classes="output-panel"):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
+        # Tạo một phần tử ẩn để chứa đường dẫn tóc giả mặc định
+        default_wig = gr.Textbox(visible=False, value="default_wig.png")
+        
         # Process button in a separate row
         with gr.Row(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
-        # Connect events - simplified for just one wig
+        # Connect events
         image_btn.click(
             fn=run_image,
-            inputs=[image_input, dest_img],
+            inputs=[image_input, default_wig],
             outputs=image_output
         )
 
