@@ -53,21 +53,23 @@ def create_dummy_image():
     return temp_file.name
 
 def run_image(image_path, *args):
-    # Extract arguments from *args
-    num_faces = (len(args) - 2) // 2
+    # Tất cả các tham số đều là khuôn mặt, không có face_mode và reface_ratio
+    num_faces = len(args) // 2
     origins = list(args[:num_faces])
-    destinations = list(args[num_faces:2*num_faces])
-    face_mode = args[-2]
-    partial_reface_ratio = args[-1]
+    destinations = list(args[num_faces:])
     
-    disable_similarity = (face_mode in ["Single Face", "Multiple Faces"])
-    multiple_faces_mode = (face_mode == "Multiple Faces")
+    # Giá trị mặc định cho replacement mode và reface ratio
+    face_mode = "Multiple Faces"  # Mặc định Multiple Faces
+    partial_reface_ratio = 0.0    # Mặc định Full Face
+    
+    disable_similarity = True  # Tương đương với "Multiple Faces"
+    multiple_faces_mode = True # Tương đương với "Multiple Faces"
 
     faces = []
     for k in range(num_faces):
         if destinations[k] is not None:
             faces.append({
-                'origin': origins[k] if not multiple_faces_mode else None,
+                'origin': None,  # Trong Multiple Faces, origin không được sử dụng
                 'destination': destinations[k],
                 'threshold': 0.0
             })
@@ -118,14 +120,6 @@ def distribute_faces(filepath):
     faces = extract_faces_auto(filepath, refacer, max_faces=num_faces)
     return faces[0], faces[1], faces[2], faces[3], faces[4], faces[5], faces[6], faces[7]
 
-# Hàm để cập nhật hiển thị của face panels dựa trên chế độ
-def update_face_visibility(mode):
-    if mode == "Single Face":
-        return [gr.update(visible=True)] + [gr.update(visible=False)] * 7
-    else:
-        return [gr.update(visible=True)] * 8
-
-# --- UI với CSS tùy chỉnh ---
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
 body {
@@ -191,6 +185,7 @@ body {
     padding: 15px;
     margin: 15px 0;
     border: 1px solid #e2e8f0;
+    text-align: center;
 }
 
 .face-container {
@@ -266,50 +261,31 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="Refaced image", interactive=False, type="filepath", height=400)
         
-        # Controls
+        # Controls - chỉ giữ lại nút Process
         with gr.Row(elem_classes="control-panel"):
-            with gr.Column(scale=1):
-                face_mode_image = gr.Radio(
-                    ["Single Face", "Multiple Faces", "Faces By Match"], 
-                    value="Single Face", 
-                    label="Replacement Mode"
-                )
-            with gr.Column(scale=1):
-                partial_reface_ratio_image = gr.Slider(
-                    label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", 
-                    minimum=0.0, 
-                    maximum=0.5, 
-                    value=0.0, 
-                    step=0.1
-                )
-            with gr.Column(scale=1):
-                image_btn = gr.Button("Process Image", variant="primary")
+            image_btn = gr.Button("Process Image", variant="primary", size="lg")
 
         # Faces Panels
         with gr.Row():
             # Source Faces
             with gr.Column():
                 gr.Markdown('<div class="section-title">Faces to Replace</div>')
-                face_panels = []
                 
                 # Origin faces
                 origin_images = []
                 for i in range(num_faces):
-                    with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
-                        face_panels.append(panel)
+                    with gr.Column(visible=True, elem_classes="face-container"):
                         origin_img = gr.Image(label=f"Face #{i+1} to replace", height=180)
                         origin_images.append(origin_img)
             
             # Destination Faces
             with gr.Column():
                 gr.Markdown('<div class="section-title">Destination Faces</div>')
-                dest_panels = []
                 
                 # Destination faces
                 dest_images = []
                 for i in range(num_faces):
-                    with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
-                        dest_panels.append(panel)
+                    with gr.Column(visible=True, elem_classes="face-container"):
                         dest_img = gr.Image(label=f"Destination face #{i+1}", height=180)
                         dest_images.append(dest_img)
                         
@@ -317,7 +293,6 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         all_inputs = [image_input]
         all_inputs.extend(origin_images)
         all_inputs.extend(dest_images)
-        all_inputs.extend([face_mode_image, partial_reface_ratio_image])
         
         image_btn.click(
             fn=run_image,
@@ -329,25 +304,6 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             fn=distribute_faces,
             inputs=image_input,
             outputs=origin_images
-        )
-        
-        image_input.change(
-            fn=lambda _: 0.0,
-            inputs=image_input,
-            outputs=partial_reface_ratio_image
-        )
-        
-        # Update face panel visibility based on mode
-        face_mode_image.change(
-            fn=update_face_visibility,
-            inputs=face_mode_image,
-            outputs=face_panels
-        )
-        
-        face_mode_image.change(
-            fn=update_face_visibility,
-            inputs=face_mode_image,
-            outputs=dest_panels
         )
 
     # Footer
