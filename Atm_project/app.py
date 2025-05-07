@@ -52,22 +52,28 @@ def create_dummy_image():
     dummy.save(temp_file.name)
     return temp_file.name
 
-def run_image(wig_path, face_image):
-    # Đảo ngược: Wig là source, Face là target
-    face_mode = "Single Face"
-    disable_similarity = True
-    multiple_faces_mode = False
-    partial_reface_ratio = 0.0
+def run_image(image_path, *args):
+    # Extract arguments from *args
+    # Bỏ qua origin_images, chỉ lấy destination_images
+    destinations = list(args)
+    
+    # Sử dụng Single Face mode và Reface Ratio = 0 (mặc định)
+    face_mode = "Single Face"  # Mặc định Single Face mode
+    partial_reface_ratio = 0.0    # Mặc định Full Face
+    
+    disable_similarity = True  # Single Face => disable_similarity = True
+    multiple_faces_mode = False # Single Face => multiple_faces_mode = False
 
     faces = []
-    if wig_path is not None and face_image is not None:
-        faces.append({
-            'origin': None,
-            'destination': wig_path,
-            'threshold': 0.0
-        })
+    for k in range(len(destinations)):
+        if destinations[k] is not None:
+            faces.append({
+                'origin': None,  # Không sử dụng origin trong Single Face mode
+                'destination': destinations[k],
+                'threshold': 0.0
+            })
 
-    return refacer.reface_image(face_image, faces, disable_similarity=disable_similarity, 
+    return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
                                multiple_faces_mode=multiple_faces_mode, 
                                partial_reface_ratio=partial_reface_ratio)
 
@@ -108,6 +114,10 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
                 os.remove(temp_image_path)
             except Exception as e:
                 print(f"Warning: Could not delete temp file {temp_image_path}: {e}")
+
+def distribute_faces(filepath):
+    faces = extract_faces_auto(filepath, refacer, max_faces=num_faces)
+    return faces[0], faces[1], faces[2], faces[3], faces[4], faces[5], faces[6], faces[7]
 
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
@@ -153,13 +163,9 @@ body {
     color: #bfdbfe;
 }
 
-.wig-panel {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.main-panels {
+    display: flex;
+    gap: 20px;
 }
 
 .input-panel {
@@ -179,6 +185,15 @@ body {
     flex: 1;
 }
 
+.wigs-panel {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+}
+
 .control-panel {
     background-color: #ffffff;
     border-radius: 10px;
@@ -186,6 +201,17 @@ body {
     margin: 15px 0;
     border: 1px solid #e2e8f0;
     text-align: center;
+}
+
+.wig-container {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 8px 8px 0;
+    padding: 5px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    background-color: #f8fafc;
+    width: 110px;
 }
 
 .section-title {
@@ -216,6 +242,15 @@ button.primary {
 button.primary:hover {
     background-color: #1a2e6c !important;
 }
+
+/* Tùy chỉnh tiều đề wigs */
+.wig-title {
+    font-size: 0.85rem;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -240,36 +275,47 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     </div>
     """)
 
-    # --- MAIN UI ---
-    # Wig Selection
-    with gr.Row(elem_classes="wig-panel"):
-        with gr.Column(scale=1):
-            gr.Markdown('<div class="section-title">Select a Wig</div>')
-            wig_image = gr.Image(label="Upload or select a wig image", type="filepath", height=200)
-    
-    # Main panels - Face và Result
-    with gr.Row():
-        # Face column
-        with gr.Column(scale=1, elem_classes="input-panel"):
-            gr.Markdown('<div class="section-title">Your Face</div>')
-            face_image = gr.Image(label="Upload your face image", type="filepath", height=350)
+    # --- IMAGE MODE ---
+    with gr.Tab("Image Mode"):
+        # Main panels - Input và Output
+        with gr.Row():
+            # Input Column
+            with gr.Column(elem_classes="input-panel"):
+                gr.Markdown('<div class="section-title">Input Image</div>')
+                image_input = gr.Image(label="Original face", type="filepath", height=350)
+            
+            # Output Column
+            with gr.Column(elem_classes="output-panel"):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=350)
         
-        # Output Column
-        with gr.Column(scale=1, elem_classes="output-panel"):
-            gr.Markdown('<div class="section-title">Try-on Result</div>')
-            result_image = gr.Image(label="After try-on", interactive=False, type="filepath", height=350)
-    
-    # Process Button
-    with gr.Row(elem_classes="control-panel"):
-        try_on_btn = gr.Button("Try On Wig", variant="primary", size="lg")
-    
-    # Connect try on button
-    try_on_btn.click(
-        fn=run_image,
-        inputs=[wig_image, face_image],
-        outputs=[result_image]
-    )
-    
+        # Process Button
+        with gr.Row(elem_classes="control-panel"):
+            image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
+        
+        # Wigs row (phía dưới)
+        with gr.Row(elem_classes="wigs-panel"):
+            gr.Markdown('<div class="section-title">Wigs to Try</div>')
+            
+            # Destination faces - hàng ngang, kích thước nhỏ
+            with gr.Row():
+                dest_images = []
+                for i in range(num_faces):
+                    with gr.Column(elem_classes="wig-container"):
+                        dest_img = gr.Image(label=f"", height=100, width=100)
+                        gr.Markdown(f'<div class="wig-title">Wig #{i+1}</div>')
+                        dest_images.append(dest_img)
+        
+        # Connect events
+        all_inputs = [image_input]
+        all_inputs.extend(dest_images)
+        
+        image_btn.click(
+            fn=run_image,
+            inputs=all_inputs,
+            outputs=image_output
+        )
+
     # Footer
     gr.HTML("""
     <div class="footer">
