@@ -52,17 +52,24 @@ def create_dummy_image():
     dummy.save(temp_file.name)
     return temp_file.name
 
-def run_image(image_path, origins, destinations, face_mode, partial_reface_ratio):
+def run_image(image_path, *args):
+    # Extract arguments from *args
+    num_faces = (len(args) - 2) // 2
+    origins = list(args[:num_faces])
+    destinations = list(args[num_faces:2*num_faces])
+    face_mode = args[-2]
+    partial_reface_ratio = args[-1]
+    
     disable_similarity = (face_mode in ["Single Face", "Multiple Faces"])
     multiple_faces_mode = (face_mode == "Multiple Faces")
 
     faces = []
-    for k in range(len(destinations)):
+    for k in range(num_faces):
         if destinations[k] is not None:
             faces.append({
                 'origin': origins[k] if not multiple_faces_mode else None,
                 'destination': destinations[k],
-                'threshold': 0.0  # Fixed threshold value
+                'threshold': 0.0
             })
 
     return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
@@ -98,7 +105,8 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
 
     try:
         faces = refacer_instance.extract_faces_from_image(temp_image_path, max_faces=max_faces)
-        return faces + [None] * (max_faces - len(faces))
+        result = faces + [None] * (max_faces - len(faces))
+        return result
     finally:
         if os.path.exists(temp_image_path):
             try:
@@ -106,68 +114,288 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
             except Exception as e:
                 print(f"Warning: Could not delete temp file {temp_image_path}: {e}")
 
-# --- UI ---
-theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
+def distribute_faces(filepath):
+    faces = extract_faces_auto(filepath, refacer, max_faces=num_faces)
+    return faces[0], faces[1], faces[2], faces[3], faces[4], faces[5], faces[6], faces[7]
 
-with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
-    # Load and display logo
+# Hàm để cập nhật hiển thị của face panels dựa trên chế độ
+def update_face_visibility(mode):
+    if mode == "Single Face":
+        return [gr.update(visible=True)] + [gr.update(visible=False)] * 7
+    else:
+        return [gr.update(visible=True)] * 8
+
+# --- UI với CSS tùy chỉnh ---
+custom_css = """
+:root {
+    --main-color: #3b82f6;
+    --secondary-color: #06b6d4;
+    --background-color: #f8fafc;
+    --panel-background: #ffffff;
+    --text-color: #1e293b;
+    --border-color: #e2e8f0;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.gradio-container {
+    max-width: 1400px !important;
+    margin: 0 auto;
+}
+
+.header-container {
+    text-align: center;
+    padding: 20px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.header-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.header-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--main-color);
+    margin-bottom: 5px;
+}
+
+.header-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.card {
+    background-color: var(--panel-background);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.input-panel {
+    background-color: var(--panel-background);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.output-panel {
+    background-color: var(--panel-background);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.control-panel {
+    background-color: var(--panel-background);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    border: 1px solid var(--border-color);
+}
+
+.face-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.face-container {
+    background-color: var(--panel-background);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.section-title {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: var(--main-color);
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 5px;
+    display: inline-block;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+button.primary {
+    background-color: var(--main-color) !important;
+    color: white !important;
+}
+
+button.primary:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+.tab-nav {
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.tab-nav button {
+    font-weight: bold;
+    padding: 10px 20px !important;
+}
+
+.tab-nav button.selected {
+    color: var(--main-color) !important;
+    border-bottom: 3px solid var(--main-color) !important;
+}
+"""
+
+custom_theme = gr.themes.Base(
+    primary_hue="blue",
+    secondary_hue="cyan",
+    neutral_hue="slate",
+    radius_size=gr.themes.sizes.radius_md,
+    font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"]
+)
+
+with gr.Blocks(theme=custom_theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
     try:
         with open("Logo.png", "rb") as f:
             icon_data = base64.b64encode(f.read()).decode()
-        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:140px;height:140px;">'
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:120px;height:120px;">'
     except FileNotFoundError:
-        icon_html = "<h1>ATMwigs</h1>"
+        icon_html = '<div style="font-size: 3rem; color: var(--main-color);">💇</div>'
     
-    with gr.Row():
-        gr.Markdown(f"""
-        <div style="display: flex; align-items: center;">
-        {icon_html}
-        </div>
-        """)
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-title">ATMwigs</div>
+        <div class="header-subtitle">Virtual Try-on System for Wigs</div>
+    </div>
+    """)
 
     # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
         with gr.Row():
-            with gr.Column(scale=1):
-                image_input = gr.Image(label="Original image", type="filepath")
-            with gr.Column(scale=1):
-                image_output = gr.Image(label="Refaced image", interactive=False, type="filepath")
-        
-        with gr.Row():
-            face_mode_image = gr.Radio(
-                ["Single Face", "Multiple Faces", "Faces By Match"], 
-                value="Single Face", 
-                label="Replacement Mode"
-            )
-            partial_reface_ratio_image = gr.Slider(
-                label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", 
-                minimum=0.0, 
-                maximum=0.5, 
-                value=0.0, 
-                step=0.1
-            )
-            image_btn = gr.Button("Reface Image", variant="primary")
-        
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### Faces to replace")
-                origin_image = [gr.Image(label=f"Face #{i+1} to replace", height=200) for i in range(num_faces)]
+            # Input Column
+            with gr.Column(scale=1, elem_classes="input-panel"):
+                gr.Markdown('<div class="section-title">Input Image</div>')
+                image_input = gr.Image(label="Original image", type="filepath", height=400)
             
+            # Output Column
+            with gr.Column(scale=1, elem_classes="output-panel"):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(label="Refaced image", interactive=False, type="filepath", height=400)
+        
+        # Controls
+        with gr.Row(elem_classes="control-panel"):
             with gr.Column(scale=1):
-                gr.Markdown("### Destination faces")
-                destination_image = [gr.Image(label=f"Destination face #{i+1}", height=200) for i in range(num_faces)]
+                face_mode_image = gr.Radio(
+                    ["Single Face", "Multiple Faces", "Faces By Match"], 
+                    value="Single Face", 
+                    label="Replacement Mode"
+                )
+            with gr.Column(scale=1):
+                partial_reface_ratio_image = gr.Slider(
+                    label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", 
+                    minimum=0.0, 
+                    maximum=0.5, 
+                    value=0.0, 
+                    step=0.1
+                )
+            with gr.Column(scale=1):
+                image_btn = gr.Button("Process Image", variant="primary", size="lg")
+
+        # Faces Panels in Tabs
+        with gr.Tabs():
+            with gr.TabItem("Face Configuration"):
+                with gr.Row():
+                    # Source Faces
+                    with gr.Column(elem_classes="face-grid"):
+                        gr.Markdown('<div class="section-title">Faces to Replace</div>')
+                        face_panels = []
+                        for i in range(num_faces):
+                            with gr.Box(visible=(i==0), elem_classes="face-container") as panel:
+                                face_panels.append(panel)
+                                origin_img = gr.Image(label=f"Face #{i+1} to replace", height=180)
+                                if i == 0:
+                                    origin_image_1 = origin_img
+                                elif i == 1:
+                                    origin_image_2 = origin_img
+                                elif i == 2:
+                                    origin_image_3 = origin_img
+                                elif i == 3:
+                                    origin_image_4 = origin_img
+                                elif i == 4:
+                                    origin_image_5 = origin_img
+                                elif i == 5:
+                                    origin_image_6 = origin_img
+                                elif i == 6:
+                                    origin_image_7 = origin_img
+                                else:
+                                    origin_image_8 = origin_img
+                    
+                    # Destination Faces
+                    with gr.Column(elem_classes="face-grid"):
+                        gr.Markdown('<div class="section-title">Destination Faces</div>')
+                        dest_panels = []
+                        for i in range(num_faces):
+                            with gr.Box(visible=(i==0), elem_classes="face-container") as panel:
+                                dest_panels.append(panel)
+                                dest_img = gr.Image(label=f"Destination face #{i+1}", height=180)
+                                if i == 0:
+                                    dest_image_1 = dest_img
+                                elif i == 1:
+                                    dest_image_2 = dest_img
+                                elif i == 2:
+                                    dest_image_3 = dest_img
+                                elif i == 3:
+                                    dest_image_4 = dest_img
+                                elif i == 4:
+                                    dest_image_5 = dest_img
+                                elif i == 5:
+                                    dest_image_6 = dest_img
+                                elif i == 6:
+                                    dest_image_7 = dest_img
+                                else:
+                                    dest_image_8 = dest_img
+
+        origin_images = [origin_image_1, origin_image_2, origin_image_3, origin_image_4,
+                        origin_image_5, origin_image_6, origin_image_7, origin_image_8]
+        dest_images = [dest_image_1, dest_image_2, dest_image_3, dest_image_4,
+                     dest_image_5, dest_image_6, dest_image_7, dest_image_8]
         
         # Connect events
+        all_inputs = [image_input]
+        all_inputs.extend(origin_images)
+        all_inputs.extend(dest_images)
+        all_inputs.extend([face_mode_image, partial_reface_ratio_image])
+        
         image_btn.click(
             fn=run_image,
-            inputs=[image_input, origin_image, destination_image, face_mode_image, partial_reface_ratio_image],
+            inputs=all_inputs,
             outputs=image_output
         )
         
         image_input.change(
-            fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces),
+            fn=distribute_faces,
             inputs=image_input,
-            outputs=origin_image
+            outputs=origin_images
         )
         
         image_input.change(
@@ -175,6 +403,27 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
             inputs=image_input,
             outputs=partial_reface_ratio_image
         )
+        
+        # Update face panel visibility based on mode
+        face_mode_image.change(
+            fn=update_face_visibility,
+            inputs=face_mode_image,
+            outputs=face_panels
+        )
+        
+        face_mode_image.change(
+            fn=update_face_visibility,
+            inputs=face_mode_image,
+            outputs=dest_panels
+        )
+
+    # Footer
+    gr.HTML("""
+    <div class="footer">
+        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>Developed with ❤️ for virtual wig try-on</p>
+    </div>
+    """)
 
 # --- ngrok connect (optional) ---
 if args.ngrok and args.ngrok != "None":
@@ -194,5 +443,6 @@ if __name__ == "__main__":
         show_error=True,
         share=args.share_gradio,
         server_name=args.server_name,
-        server_port=args.server_port
+        server_port=args.server_port,
+        enable_api=True
     )
