@@ -181,7 +181,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         #     partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
         #     image_btn = gr.Button("Reface Image", variant="primary")
 
-        # origin_image, destination_image, thresholds_image, face_tabs_image = [], [], [], []
+        origin_image, destination_image, thresholds_image, face_tabs_image = [], [], [], []
 
         # for i in range(num_faces):
         #     with gr.Tab(f"Face #{i+1}") as tab:
