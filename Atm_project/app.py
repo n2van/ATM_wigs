@@ -127,19 +127,9 @@ def update_face_visibility(mode):
 
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
-:root {
-    --main-color: #3b82f6;
-    --secondary-color: #06b6d4;
-    --background-color: #f8fafc;
-    --panel-background: #ffffff;
-    --text-color: #1e293b;
-    --border-color: #e2e8f0;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
 body {
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: #f8fafc;
+    color: #1e293b;
 }
 
 .gradio-container {
@@ -151,7 +141,7 @@ body {
     text-align: center;
     padding: 20px 0;
     margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .header-logo {
@@ -164,59 +154,44 @@ body {
 .header-title {
     font-size: 2.5rem;
     font-weight: bold;
-    color: var(--main-color);
+    color: #3b82f6;
     margin-bottom: 5px;
 }
 
 .header-subtitle {
     font-size: 1.2rem;
-    color: var(--text-color);
+    color: #1e293b;
     opacity: 0.7;
 }
 
-.card {
-    background-color: var(--panel-background);
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
 .input-panel {
-    background-color: var(--panel-background);
+    background-color: #ffffff;
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 15px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e2e8f0;
 }
 
 .output-panel {
-    background-color: var(--panel-background);
+    background-color: #ffffff;
     border-radius: 10px;
     padding: 15px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e2e8f0;
 }
 
 .control-panel {
-    background-color: var(--panel-background);
+    background-color: #ffffff;
     border-radius: 10px;
     padding: 15px;
     margin: 15px 0;
-    border: 1px solid var(--border-color);
-}
-
-.face-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
+    border: 1px solid #e2e8f0;
 }
 
 .face-container {
-    background-color: var(--panel-background);
+    background-color: #ffffff;
     border-radius: 8px;
     padding: 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e2e8f0;
     margin-bottom: 10px;
 }
 
@@ -224,8 +199,8 @@ body {
     font-weight: bold;
     font-size: 1.2rem;
     margin-bottom: 10px;
-    color: var(--main-color);
-    border-bottom: 2px solid var(--secondary-color);
+    color: #3b82f6;
+    border-bottom: 2px solid #06b6d4;
     padding-bottom: 5px;
     display: inline-block;
 }
@@ -234,53 +209,24 @@ body {
     text-align: center;
     margin-top: 40px;
     padding: 20px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid #e2e8f0;
     font-size: 0.9rem;
-    color: var(--text-color);
+    color: #1e293b;
     opacity: 0.7;
-}
-
-button.primary {
-    background-color: var(--main-color) !important;
-    color: white !important;
-}
-
-button.primary:hover {
-    background-color: var(--secondary-color) !important;
-}
-
-.tab-nav {
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: 20px;
-}
-
-.tab-nav button {
-    font-weight: bold;
-    padding: 10px 20px !important;
-}
-
-.tab-nav button.selected {
-    color: var(--main-color) !important;
-    border-bottom: 3px solid var(--main-color) !important;
 }
 """
 
-custom_theme = gr.themes.Base(
-    primary_hue="blue",
-    secondary_hue="cyan",
-    neutral_hue="slate",
-    radius_size=gr.themes.sizes.radius_md,
-    font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"]
-)
+# Sử dụng theme đơn giản cho các phiên bản Gradio cũ
+theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
 
-with gr.Blocks(theme=custom_theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
     # Logo and Header
     try:
         with open("Logo.png", "rb") as f:
             icon_data = base64.b64encode(f.read()).decode()
         icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:120px;height:120px;">'
     except FileNotFoundError:
-        icon_html = '<div style="font-size: 3rem; color: var(--main-color);">💇</div>'
+        icon_html = '<div style="font-size: 3rem; color: #3b82f6;">💇</div>'
     
     gr.HTML(f"""
     <div class="header-container">
@@ -320,38 +266,36 @@ with gr.Blocks(theme=custom_theme, css=custom_css, title="ATMwigs - Try-on Wigs"
                     step=0.1
                 )
             with gr.Column(scale=1):
-                image_btn = gr.Button("Process Image", variant="primary", size="lg")
+                image_btn = gr.Button("Process Image", variant="primary")
 
-        # Faces Panels in Tabs
-        with gr.Tabs():
-            with gr.TabItem("Face Configuration"):
-                with gr.Row():
-                    # Source Faces
-                    with gr.Column(elem_classes="face-grid"):
-                        gr.Markdown('<div class="section-title">Faces to Replace</div>')
-                        face_panels = []
+        # Faces Panels
+        with gr.Row():
+            # Source Faces
+            with gr.Column():
+                gr.Markdown('<div class="section-title">Faces to Replace</div>')
+                face_panels = []
+                
+                # Origin faces
+                origin_images = []
+                for i in range(num_faces):
+                    with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
+                        face_panels.append(panel)
+                        origin_img = gr.Image(label=f"Face #{i+1} to replace", height=180)
+                        origin_images.append(origin_img)
+            
+            # Destination Faces
+            with gr.Column():
+                gr.Markdown('<div class="section-title">Destination Faces</div>')
+                dest_panels = []
+                
+                # Destination faces
+                dest_images = []
+                for i in range(num_faces):
+                    with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
+                        dest_panels.append(panel)
+                        dest_img = gr.Image(label=f"Destination face #{i+1}", height=180)
+                        dest_images.append(dest_img)
                         
-                        # Origin faces
-                        origin_images = []
-                        for i in range(num_faces):
-                            with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
-                                face_panels.append(panel)
-                                origin_img = gr.Image(label=f"Face #{i+1} to replace", height=180)
-                                origin_images.append(origin_img)
-                    
-                    # Destination Faces
-                    with gr.Column(elem_classes="face-grid"):
-                        gr.Markdown('<div class="section-title">Destination Faces</div>')
-                        dest_panels = []
-                        
-                        # Destination faces
-                        dest_images = []
-                        for i in range(num_faces):
-                            with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
-                                dest_panels.append(panel)
-                                dest_img = gr.Image(label=f"Destination face #{i+1}", height=180)
-                                dest_images.append(dest_img)
-                                
         # Connect events
         all_inputs = [image_input]
         all_inputs.extend(origin_images)
@@ -410,11 +354,14 @@ if args.ngrok and args.ngrok != "None":
 
 # --- Launch app ---
 if __name__ == "__main__":
+    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
     demo.queue().launch(
         favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
         show_error=True,
         share=args.share_gradio,
         server_name=args.server_name,
-        server_port=args.server_port,
-        enable_api=True
+        server_port=args.server_port
     )
+    
+    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
+    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
