@@ -163,34 +163,18 @@ body {
     color: #bfdbfe;
 }
 
-.main-panels {
-    display: flex;
-    gap: 20px;
-}
-
 .input-panel {
     background-color: #ffffff;
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 15px;
     border: 1px solid #e2e8f0;
-    flex: 1;
 }
 
 .output-panel {
     background-color: #ffffff;
     border-radius: 10px;
     padding: 15px;
-    border: 1px solid #e2e8f0;
-    flex: 1;
-}
-
-.wigs-panel {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 15px;
-    margin-top: 15px;
-    margin-bottom: 15px;
     border: 1px solid #e2e8f0;
 }
 
@@ -203,15 +187,12 @@ body {
     text-align: center;
 }
 
-.wig-container {
-    display: inline-block;
-    vertical-align: top;
-    margin: 0 8px 8px 0;
-    padding: 5px;
+.face-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
     border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    background-color: #f8fafc;
-    width: 110px;
+    margin-bottom: 10px;
 }
 
 .section-title {
@@ -242,15 +223,6 @@ button.primary {
 button.primary:hover {
     background-color: #1a2e6c !important;
 }
-
-/* Tùy chỉnh tiều đề wigs */
-.wig-title {
-    font-size: 0.85rem;
-    text-align: center;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -277,34 +249,32 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
     # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
-        # Main panels - Input và Output
+        # Main layout
         with gr.Row():
-            # Input Column
-            with gr.Column(elem_classes="input-panel"):
-                gr.Markdown('<div class="section-title">Input Image</div>')
-                image_input = gr.Image(label="Original face", type="filepath", height=350)
-            
-            # Output Column
-            with gr.Column(elem_classes="output-panel"):
-                gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=350)
-        
-        # Process Button
-        with gr.Row(elem_classes="control-panel"):
-            image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
-        
-        # Wigs row (phía dưới)
-        with gr.Row(elem_classes="wigs-panel"):
-            gr.Markdown('<div class="section-title">Wigs to Try</div>')
-            
-            # Destination faces - hàng ngang, kích thước nhỏ
-            with gr.Row():
+            # Destination (Wigs) Column FIRST
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs to Try</div>')
+                
+                # Destination faces (shifted to the top)
                 dest_images = []
                 for i in range(num_faces):
-                    with gr.Column(elem_classes="wig-container"):
-                        dest_img = gr.Image(label=f"", height=100, width=100)
-                        gr.Markdown(f'<div class="wig-title">Wig #{i+1}</div>')
+                    with gr.Column(visible=True, elem_classes="face-container"):
+                        dest_img = gr.Image(label=f"Wig #{i+1}", height=180)
                         dest_images.append(dest_img)
+            
+            # Middle column for Input
+            with gr.Column(scale=2, elem_classes="input-panel"):
+                gr.Markdown('<div class="section-title">Input Image</div>')
+                image_input = gr.Image(label="Original face", type="filepath", height=400)
+                
+                # Process button
+                with gr.Row(elem_classes="control-panel"):
+                    image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
+            
+            # Output Column
+            with gr.Column(scale=2, elem_classes="output-panel"):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
         # Connect events
         all_inputs = [image_input]
