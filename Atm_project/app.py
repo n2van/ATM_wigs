@@ -171,7 +171,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         """)
 
     # --- IMAGE MODE ---
- with gr.Tab("Image Mode"):
+with gr.Tab("Image Mode"):
         with gr.Row():
             image_input = gr.Image(label="Original image", type="filepath")
             image_output = gr.Image(label="Refaced image", interactive=False, type="filepath")
@@ -200,6 +200,7 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         image_btn.click(fn=run_image, inputs=[image_input] + origin_image + destination_image + thresholds_image + [face_mode_image, partial_reface_ratio_image], outputs=[image_output])
         image_input.change(fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces), inputs=image_input, outputs=origin_image)
         image_input.change(fn=lambda _: 0.0, inputs=image_input, outputs=partial_reface_ratio_image)
+
 
     # --- GIF MODE ---
     # with gr.Tab("GIF Mode"):
