@@ -153,9 +153,13 @@ body {
     color: #bfdbfe;
 }
 
-.main-panels {
-    display: flex;
-    gap: 20px;
+.wig-panel {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .input-panel {
@@ -175,15 +179,6 @@ body {
     flex: 1;
 }
 
-.wigs-panel {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 15px;
-    margin-top: 15px;
-    margin-bottom: 15px;
-    border: 1px solid #e2e8f0;
-}
-
 .control-panel {
     background-color: #ffffff;
     border-radius: 10px;
@@ -191,38 +186,6 @@ body {
     margin: 15px 0;
     border: 1px solid #e2e8f0;
     text-align: center;
-}
-
-.face-image {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 10px;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 15px;
-}
-
-.wig-container {
-    display: inline-block;
-    vertical-align: top;
-    margin: 0 8px 8px 0;
-    padding: 5px;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    background-color: #f8fafc;
-    width: 110px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.wig-container:hover {
-    border-color: #0e1b4d;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-}
-
-.wig-container.selected {
-    border: 2px solid #0e1b4d;
-    background-color: #e0f2fe;
 }
 
 .section-title {
@@ -253,15 +216,6 @@ button.primary {
 button.primary:hover {
     background-color: #1a2e6c !important;
 }
-
-/* Tùy chỉnh tiều đề wigs */
-.wig-title {
-    font-size: 0.85rem;
-    text-align: center;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -287,50 +241,27 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     """)
 
     # --- MAIN UI ---
-    # Wigs row (ở trên, như một menu)
-    with gr.Row(elem_classes="wigs-panel"):
-        gr.Markdown('<div class="section-title">Select a Wig</div>')
-        
-        # Wigs hiển thị hàng ngang, kích thước nhỏ
-        with gr.Row():
-            selected_wig = gr.State(None)  # State để lưu wig đã chọn
-            wig_image = gr.Image(type="filepath", label="Selected Wig", visible=False)
-            
-            # Tạo các ô wig
-            wig_containers = []
-            for i in range(num_faces):
-                with gr.Column(elem_classes="wig-container"):
-                    wig_img = gr.Image(label="", height=100, width=100)
-                    gr.Markdown(f'<div class="wig-title">Wig #{i+1}</div>')
-                    wig_containers.append(wig_img)
+    # Wig Selection
+    with gr.Row(elem_classes="wig-panel"):
+        with gr.Column(scale=1):
+            gr.Markdown('<div class="section-title">Select a Wig</div>')
+            wig_image = gr.Image(label="Upload or select a wig image", type="filepath", height=200)
     
     # Main panels - Face và Result
     with gr.Row():
-        # Face column - Đổi thành ô upload khuôn mặt
-        with gr.Column(elem_classes="input-panel"):
+        # Face column
+        with gr.Column(scale=1, elem_classes="input-panel"):
             gr.Markdown('<div class="section-title">Your Face</div>')
             face_image = gr.Image(label="Upload your face image", type="filepath", height=350)
         
         # Output Column
-        with gr.Column(elem_classes="output-panel"):
+        with gr.Column(scale=1, elem_classes="output-panel"):
             gr.Markdown('<div class="section-title">Try-on Result</div>')
             result_image = gr.Image(label="After try-on", interactive=False, type="filepath", height=350)
     
     # Process Button
     with gr.Row(elem_classes="control-panel"):
-        try_on_btn = gr.Button("Try On Selected Wig", variant="primary", size="lg")
-    
-    # Logic khi chọn wig
-    def select_wig(wig_path):
-        return wig_path
-    
-    # Connect sự kiện cho các wig
-    for wig in wig_containers:
-        wig.change(
-            fn=select_wig,
-            inputs=[wig],
-            outputs=[wig_image]
-        )
+        try_on_btn = gr.Button("Try On Wig", variant="primary", size="lg")
     
     # Connect try on button
     try_on_btn.click(
