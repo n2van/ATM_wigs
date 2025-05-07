@@ -217,6 +217,7 @@ body {
     border-radius: 8px;
     padding: 10px;
     border: 1px solid var(--border-color);
+    margin-bottom: 10px;
 }
 
 .section-title {
@@ -329,57 +330,28 @@ with gr.Blocks(theme=custom_theme, css=custom_css, title="ATMwigs - Try-on Wigs"
                     with gr.Column(elem_classes="face-grid"):
                         gr.Markdown('<div class="section-title">Faces to Replace</div>')
                         face_panels = []
+                        
+                        # Origin faces
+                        origin_images = []
                         for i in range(num_faces):
-                            with gr.Box(visible=(i==0), elem_classes="face-container") as panel:
+                            with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
                                 face_panels.append(panel)
                                 origin_img = gr.Image(label=f"Face #{i+1} to replace", height=180)
-                                if i == 0:
-                                    origin_image_1 = origin_img
-                                elif i == 1:
-                                    origin_image_2 = origin_img
-                                elif i == 2:
-                                    origin_image_3 = origin_img
-                                elif i == 3:
-                                    origin_image_4 = origin_img
-                                elif i == 4:
-                                    origin_image_5 = origin_img
-                                elif i == 5:
-                                    origin_image_6 = origin_img
-                                elif i == 6:
-                                    origin_image_7 = origin_img
-                                else:
-                                    origin_image_8 = origin_img
+                                origin_images.append(origin_img)
                     
                     # Destination Faces
                     with gr.Column(elem_classes="face-grid"):
                         gr.Markdown('<div class="section-title">Destination Faces</div>')
                         dest_panels = []
+                        
+                        # Destination faces
+                        dest_images = []
                         for i in range(num_faces):
-                            with gr.Box(visible=(i==0), elem_classes="face-container") as panel:
+                            with gr.Column(visible=(i==0), elem_classes="face-container") as panel:
                                 dest_panels.append(panel)
                                 dest_img = gr.Image(label=f"Destination face #{i+1}", height=180)
-                                if i == 0:
-                                    dest_image_1 = dest_img
-                                elif i == 1:
-                                    dest_image_2 = dest_img
-                                elif i == 2:
-                                    dest_image_3 = dest_img
-                                elif i == 3:
-                                    dest_image_4 = dest_img
-                                elif i == 4:
-                                    dest_image_5 = dest_img
-                                elif i == 5:
-                                    dest_image_6 = dest_img
-                                elif i == 6:
-                                    dest_image_7 = dest_img
-                                else:
-                                    dest_image_8 = dest_img
-
-        origin_images = [origin_image_1, origin_image_2, origin_image_3, origin_image_4,
-                        origin_image_5, origin_image_6, origin_image_7, origin_image_8]
-        dest_images = [dest_image_1, dest_image_2, dest_image_3, dest_image_4,
-                     dest_image_5, dest_image_6, dest_image_7, dest_image_8]
-        
+                                dest_images.append(dest_img)
+                                
         # Connect events
         all_inputs = [image_input]
         all_inputs.extend(origin_images)
