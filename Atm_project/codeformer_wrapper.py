@@ -12,7 +12,7 @@ from basicsr.utils.registry import ARCH_REGISTRY
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 pretrain_model_url = {
-    'restoration': 'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth',
+    'restoration': 'https://huggingface.co/VanNguyen1214/models_swap_face/resolve/main/codeformer.pth',
 }
 
 net = ARCH_REGISTRY.get('CodeFormer')(dim_embd=512, codebook_size=1024, n_head=8, n_layers=9,
