@@ -160,13 +160,13 @@ theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
 with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
     with open("LOGO_ATMwigs01.png", "rb") as f:
         icon_data = base64.b64encode(f.read()).decode()
-    icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:40px;height:40px;margin-right:10px;">'
+    icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:175px;height:85px;">'
 
     with gr.Row():
         gr.Markdown(f"""
         <div style="display: flex; align-items: center;">
         {icon_html}
-        <span style="font-size: 2em; font-weight: bold; color:#2563eb;">ATMwigs</span>
+        # <span style="font-size: 2em; font-weight: bold; color:#2563eb;">ATMwigs</span>
         </div>
         """)
 
@@ -202,40 +202,40 @@ with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
         image_input.change(fn=lambda _: 0.0, inputs=image_input, outputs=partial_reface_ratio_image)
 
     # --- GIF MODE ---
-    with gr.Tab("GIF Mode"):
-        with gr.Row():
-            gif_input = gr.File(label="Original GIF", file_types=[".gif"])
-            gif_preview = gr.Video(label="GIF Preview", interactive=False)
-            gif_output = gr.Video(label="Refaced GIF (MP4)", interactive=False, format="mp4")
-            gif_file_output = gr.Image(label="Refaced GIF (GIF)", type="filepath")
+    # with gr.Tab("GIF Mode"):
+    #     with gr.Row():
+    #         gif_input = gr.File(label="Original GIF", file_types=[".gif"])
+    #         gif_preview = gr.Video(label="GIF Preview", interactive=False)
+    #         gif_output = gr.Video(label="Refaced GIF (MP4)", interactive=False, format="mp4")
+    #         gif_file_output = gr.Image(label="Refaced GIF (GIF)", type="filepath")
 
-        with gr.Row():
-            face_mode_gif = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
-            partial_reface_ratio_gif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-            gif_btn = gr.Button("Reface GIF", variant="primary")
-            preview_checkbox_gif = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
+    #     with gr.Row():
+    #         face_mode_gif = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
+    #         partial_reface_ratio_gif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
+    #         gif_btn = gr.Button("Reface GIF", variant="primary")
+    #         preview_checkbox_gif = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
 
-        origin_gif, destination_gif, thresholds_gif, face_tabs_gif = [], [], [], []
+    #     origin_gif, destination_gif, thresholds_gif, face_tabs_gif = [], [], [], []
 
-        for i in range(num_faces):
-            with gr.Tab(f"Face #{i+1}") as tab:
-                with gr.Row():
-                    origin = gr.Image(label="Face to replace")
-                    destination = gr.Image(label="Destination face")
-                threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-            origin_gif.append(origin)
-            destination_gif.append(destination)
-            thresholds_gif.append(threshold)
-            face_tabs_gif.append(tab)
+    #     for i in range(num_faces):
+    #         with gr.Tab(f"Face #{i+1}") as tab:
+    #             with gr.Row():
+    #                 origin = gr.Image(label="Face to replace")
+    #                 destination = gr.Image(label="Destination face")
+    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
+    #         origin_gif.append(origin)
+    #         destination_gif.append(destination)
+    #         thresholds_gif.append(threshold)
+    #         face_tabs_gif.append(tab)
 
-        face_mode_gif.change(fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_gif, origin_gif), inputs=[face_mode_gif], outputs=face_tabs_gif + origin_gif)
-        demo.load(fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_gif, origin_gif), inputs=None, outputs=face_tabs_gif + origin_gif)
+    #     face_mode_gif.change(fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_gif, origin_gif), inputs=[face_mode_gif], outputs=face_tabs_gif + origin_gif)
+    #     demo.load(fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_gif, origin_gif), inputs=None, outputs=face_tabs_gif + origin_gif)
 
-        gif_btn.click(fn=run, inputs=[gif_input] + origin_gif + destination_gif + thresholds_gif + [preview_checkbox_gif, face_mode_gif, partial_reface_ratio_gif], outputs=[gif_output, gif_file_output])
+    #     gif_btn.click(fn=run, inputs=[gif_input] + origin_gif + destination_gif + thresholds_gif + [preview_checkbox_gif, face_mode_gif, partial_reface_ratio_gif], outputs=[gif_output, gif_file_output])
 
-        gif_input.change(fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces), inputs=gif_input, outputs=origin_gif)
-        gif_input.change(fn=lambda file: file, inputs=gif_input, outputs=[gif_preview])
-        gif_input.change(fn=lambda _: 0.0, inputs=gif_input, outputs=partial_reface_ratio_gif)
+    #     gif_input.change(fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces), inputs=gif_input, outputs=origin_gif)
+    #     gif_input.change(fn=lambda file: file, inputs=gif_input, outputs=[gif_preview])
+    #     gif_input.change(fn=lambda _: 0.0, inputs=gif_input, outputs=partial_reface_ratio_gif)
 
         
     # --- TIF MODE ---
