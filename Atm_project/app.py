@@ -13,8 +13,88 @@ import base64
 import pyfiglet
 import shutil
 import time
+import torch
+import torchvision
+import torch.nn as nn
+import torchvision.transforms as T
 
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
+
+# Thêm lớp FaceShapePredictor từ file detection.py
+class FaceShapePredictor:
+    def __init__(self, model_path):
+        # Khởi tạo các lớp mặt
+        self.class_names = ['Heart', 'Oblong', 'Oval', 'Round', 'Square']
+        
+        # Tải model
+        try:
+            self.model = self.load_model(model_path)
+            print("Đã tải model nhận dạng khuôn mặt thành công!")
+        except Exception as e:
+            print(f"Lỗi: Không thể tải model nhận dạng khuôn mặt: {e}")
+            self.model = None
+
+    def load_model(self, model_path):
+        # Khởi tạo mô hình
+        model = torchvision.models.efficientnet_b4(pretrained=False)
+        
+        # Thay đổi lớp classifier
+        model.classifier = nn.Sequential(
+            nn.Dropout(p=0.3, inplace=True),
+            nn.Linear(model.classifier[1].in_features, len(self.class_names))
+        )
+        
+        # Tải trọng số từ file PTH
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        
+        # Chế độ evaluation
+        model.eval()
+        
+        return model
+    
+    def predict(self, image_path):
+        if self.model is None:
+            return None
+            
+        if not os.path.exists(image_path):
+            print(f"Lỗi: File ảnh '{image_path}' không tồn tại!")
+            return None
+        
+        try:
+            # Tạo transform
+            transform = T.Compose([
+                T.Resize((224, 224)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+            
+            # Đọc và xử lý ảnh
+            image = Image.open(image_path).convert('RGB')
+            input_tensor = transform(image).unsqueeze(0)
+            
+            # Dự đoán
+            with torch.no_grad():
+                output = self.model(input_tensor)
+                probabilities = torch.nn.functional.softmax(output, dim=1)[0]
+                _, predicted = torch.max(output, 1)
+            
+            predicted_class = self.class_names[predicted.item()]
+            confidence = probabilities[predicted.item()].item()
+            
+            # Lấy danh sách xác suất của tất cả các lớp
+            probs = probabilities.cpu().numpy()
+            
+            return {
+                "predicted_class": predicted_class,
+                "confidence": confidence,
+                "probabilities": {
+                    self.class_names[i]: float(probs[i]) for i in range(len(self.class_names))
+                }
+            }
+            
+        except Exception as e:
+            print(f"Lỗi khi dự đoán: {e}")
+            return None
 
 def cleanup_temp(folder_path):
     try:
@@ -48,6 +128,23 @@ def load_example_wigs():
     # Nếu không tìm thấy file nào, trả về danh sách trống
     return example_wigs
 
+# Hàm tải hình ảnh tóc giả theo hình dạng khuôn mặt
+def load_wigs_for_face_shape(face_shape):
+    face_shape_wig_folder = f"./example_wigs/{face_shape}"
+    wigs = []
+    
+    # Kiểm tra xem có thư mục tóc giả cho hình dạng khuôn mặt này không
+    if os.path.exists(face_shape_wig_folder):
+        for file in os.listdir(face_shape_wig_folder):
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                wigs.append(os.path.join(face_shape_wig_folder, file))
+    
+    # Nếu không có, sử dụng tất cả các tóc giả
+    if not wigs:
+        wigs = load_example_wigs()
+    
+    return wigs
+
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
 parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
@@ -58,11 +155,15 @@ parser.add_argument("--server_port", type=int, default=1234)
 parser.add_argument("--colab_performance", default=False, action="store_true")
 parser.add_argument("--ngrok", type=str, default=None)
 parser.add_argument("--ngrok_region", type=str, default="us")
+parser.add_argument("--face_model", type=str, default="best_model.pth")
 args = parser.parse_args()
 
 # Initialize
 refacer = Refacer(force_cpu=args.force_cpu, colab_performance=args.colab_performance)
 num_faces = args.max_num_faces  # This will now be 1
+
+# Khởi tạo bộ nhận dạng hình dạng khuôn mặt
+face_predictor = FaceShapePredictor(args.face_model)
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -131,6 +232,32 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=1, isvideo=False):
 def distribute_faces(filepath):
     faces = extract_faces_auto(filepath, refacer, max_faces=1)
     return faces[0]
+
+# Hàm phân tích hình dạng khuôn mặt và đề xuất kiểu tóc
+def analyze_face_shape(image):
+    if image is None:
+        return "Vui lòng tải lên ảnh khuôn mặt để nhận diện", None
+    
+    result = face_predictor.predict(image)
+    
+    if result:
+        face_shape = result["predicted_class"]
+        confidence = result["confidence"]
+        
+        # Đề xuất kiểu tóc dựa trên hình dạng khuôn mặt
+        recommendations = {
+            "Heart": "Kiểu tóc thẳng dài, lob hoặc bob, tóc xoăn nhẹ với mái dài.",
+            "Oblong": "Tóc xoăn lớn, tóc bob, hoặc kiểu tóc có nhiều lớp với mái ngang.",
+            "Oval": "Hầu hết các kiểu tóc đều phù hợp. Thử tóc dài, bob, pixie, hoặc updos.",
+            "Round": "Kiểu tóc dài, thẳng với mái dài chéo, tóc xếp tầng dài đến vai.",
+            "Square": "Tóc xoăn mềm, tóc xếp tầng, tóc pixie với mái dài hoặc tóc bob dài."
+        }
+        
+        recommendation = recommendations.get(face_shape, "Không có đề xuất cụ thể.")
+        
+        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})", recommendation
+    else:
+        return "Không thể phân tích hình dạng khuôn mặt", None
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
@@ -240,6 +367,24 @@ body {
     opacity: 0.7;
 }
 
+.face-analysis {
+    background-color: #f0f9ff;
+    border: 1px solid #a0c8ff;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+.face-recommendation {
+    background-color: #f0fff4;
+    border: 1px solid #a0ffc8;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
 /* CSS cho gallery hình ảnh mẫu */
 .example-gallery {
     display: grid;
@@ -307,7 +452,12 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Input Face", height=400)  
+                dest_img = gr.Image(label="Input Face", height=400, type="filepath")  
+                
+                # Thêm phân tích hình dạng khuôn mặt
+                analyze_btn = gr.Button("Phân tích hình dạng khuôn mặt", variant="primary")
+                face_shape_result = gr.Textbox(label="Kết quả phân tích", elem_classes="face-analysis")
+                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc", elem_classes="face-recommendation")
             
             # Input Column - Wigs
             with gr.Column(scale=1, elem_classes="input-panel"):
@@ -348,7 +498,15 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
-        # Connect events - simplified for just one wig
+        # Connect events
+        # Nút phân tích khuôn mặt
+        analyze_btn.click(
+            fn=analyze_face_shape,
+            inputs=[dest_img],
+            outputs=[face_shape_result, face_recommendation]
+        )
+        
+        # Try on wig
         image_btn.click(
             fn=run_image,
             inputs=[image_input, dest_img],
