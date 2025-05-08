@@ -266,20 +266,20 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
 
             with gr.Column(elem_classes="control-panel"):
-                image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
+            image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
-                # Connect events - simplified for just one wig
+        # Connect events - simplified for just one wig
             image_btn.click(
-                    fn=run_image,
-                    inputs=[image_input, dest_img],
-                    outputs=image_output
-                    )
+                fn=run_image,
+                inputs=[image_input, dest_img],
+                outputs=image_output
+            )
 
-            # Output Column
-            with gr.Column(scale=1, elem_classes="output-panel"):
-                gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
-        
+    with gr.Row(scale=1, elem_classes="output-panel"):
+        gr.Markdown('<div class="section-title">Result</div>')
+        image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
+
+    
         # Process button in a separate row
 
     # Footer
