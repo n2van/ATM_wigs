@@ -124,7 +124,7 @@ body {
 .gradio-container {
     max-width: 1400px !important;
     margin: 0 auto;
-    background-color: #0e1b4d; /* Màu xanh navy đậm theo yêu cầu */
+    background-color: #ffffff; /* Màu xanh navy đậm theo yêu cầu */
     border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
     border-radius: 10px;
     box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
@@ -134,8 +134,8 @@ body {
 .header-container {
     padding: 20px;
     margin-bottom: 20px;
-    background-color: #0e1b4d
- /* Màu xanh navy đậm theo yêu cầu     ; */
+    background-color: #0e1b4d;
+ /* Màu xanh navy đậm theo yêu cầu      */
     color: white;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
