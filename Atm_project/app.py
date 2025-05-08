@@ -269,11 +269,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
                 # Connect events - simplified for just one wig
-                image_btn.click(
+            image_btn.click(
                     fn=run_image,
                     inputs=[image_input, dest_img],
                     outputs=image_output
-                )
+                    )
 
             # Output Column
             with gr.Column(scale=1, elem_classes="output-panel"):
