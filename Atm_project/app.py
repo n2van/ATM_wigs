@@ -116,7 +116,7 @@ if not os.path.exists("./example_wigs"):
     print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
 
 # Default path for face shape detection model
-DEFAULT_MODEL_PATH = "./models/face_shape_model.pth"
+DEFAULT_MODEL_PATH = "./face_shape_model.pth"
 
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
