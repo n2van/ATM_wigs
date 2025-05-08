@@ -134,7 +134,8 @@ body {
 .header-container {
     padding: 20px;
     margin-bottom: 20px;
- /* Màu xanh navy đậm theo yêu cầu      background-color: #0e1b4d; */
+    background-color: #0e1b4d
+ /* Màu xanh navy đậm theo yêu cầu     ; */
     color: white;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -179,7 +180,6 @@ body {
 }
 
 .control-panel {
-    background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
     margin: 15px 0;
