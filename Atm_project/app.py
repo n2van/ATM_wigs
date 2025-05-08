@@ -151,7 +151,7 @@ parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to
 parser.add_argument("--force_cpu", default=False, action="store_true")
 parser.add_argument("--share_gradio", default=False, action="store_true")
 parser.add_argument("--server_name", type=str, default="127.0.0.1")
-parser.add_argument("--server_port", type=int, default=1234)
+parser.add_argument("--server_port", type=int, default=1356)
 parser.add_argument("--colab_performance", default=False, action="store_true")
 parser.add_argument("--ngrok", type=str, default=None)
 parser.add_argument("--ngrok_region", type=str, default="us")
