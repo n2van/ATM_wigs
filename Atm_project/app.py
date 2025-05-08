@@ -134,7 +134,7 @@ body {
 .header-container {
     padding: 20px;
     margin-bottom: 20px;
-    background-color: #0e1b4d; /* Màu xanh navy đậm theo yêu cầu */
+ /* Màu xanh navy đậm theo yêu cầu      background-color: #0e1b4d; */
     color: white;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
