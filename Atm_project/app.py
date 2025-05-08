@@ -14,7 +14,7 @@ import pyfiglet
 import shutil
 import time
 
-print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("ATM wigs") + "\033[0m")
+print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
 
 def cleanup_temp(folder_path):
     try:
@@ -194,9 +194,11 @@ body {
     font-weight: bold;
     font-size: 1.2rem;
     margin-bottom: 10px;
-    color: #0e1b4d; /* Màu xanh navy đậm cho tiêu đề */
-    border-bottom: 2px solid #3b82f6;
-    padding-bottom: 5px;
+    color: #0e1b4d; /* Giữ nguyên màu chữ xanh navy đậm */
+    padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
+    border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
+    border-radius: 5px; /* Bo tròn góc khung */
+    background-color: #e6f0ff; /* Nền xanh dương rất nhạt */
     display: inline-block;
 }
 
