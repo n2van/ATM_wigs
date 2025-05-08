@@ -176,6 +176,8 @@ body {
     border-radius: 10px;
     padding: 15px;
     border: 1px solid #e2e8f0;
+    margin: 0 auto; /* Giúp căn giữa panel */
+    max-width: 800px; /* Giới hạn chiều rộng khi đứng một mình */
 }
 
 .control-panel {
@@ -248,7 +250,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
 # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
-        # Main layout with 3 equal columns
+        # Hàng đầu tiên: Original Face và Select Wigs
         with gr.Row():
             # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
@@ -260,13 +262,13 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
         
-        # Process button - Di chuyển lên trước result image
+        # Hàng thứ hai: Nút Try On Wig
         with gr.Row(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
-        # Output Row - Tách result thành một hàng riêng
+        # Hàng thứ ba: Result
         with gr.Row():
-            # Output Column
+            # Output Column - Ở giữa để cân bằng giao diện
             with gr.Column(scale=1, elem_classes="output-panel"):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
