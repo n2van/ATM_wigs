@@ -14,7 +14,7 @@ import pyfiglet
 import shutil
 import time
 
-print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("ATM wigs") + "\033[0m")
+print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
 
 def cleanup_temp(folder_path):
     try:
@@ -32,7 +32,7 @@ if not os.path.exists("./tmp"):
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
-parser.add_argument("--max_num_faces", type=int, default=8)
+parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
 parser.add_argument("--force_cpu", default=False, action="store_true")
 parser.add_argument("--share_gradio", default=False, action="store_true")
 parser.add_argument("--server_name", type=str, default="127.0.0.1")
@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 # Initialize
 refacer = Refacer(force_cpu=args.force_cpu, colab_performance=args.colab_performance)
-num_faces = args.max_num_faces
+num_faces = args.max_num_faces  # This will now be 1
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -52,51 +52,24 @@ def create_dummy_image():
     dummy.save(temp_file.name)
     return temp_file.name
 
-def run_image(*vars):
-    image_path = vars[0]
-    origins = vars[1:(num_faces+1)]
-    destinations = vars[(num_faces+1):(num_faces*2)+1]
-    thresholds = vars[(num_faces*2)+1:-2]
-    face_mode = vars[-2]
-    partial_reface_ratio = vars[-1]
-
-    disable_similarity = (face_mode in ["Single Face", "Multiple Faces"])
-    multiple_faces_mode = (face_mode == "Multiple Faces")
+def run_image(image_path, destination):
+    # Simplified for single wig mode
+    face_mode = "Single Face"
+    partial_reface_ratio = 0.0
+    disable_similarity = True
+    multiple_faces_mode = False
 
     faces = []
-    for k in range(num_faces):
-        if destinations[k] is not None:
-            faces.append({
-                'origin': origins[k] if not multiple_faces_mode else None,
-                'destination': destinations[k],
-                'threshold': thresholds[k] if not multiple_faces_mode else 0.0
-            })
+    if destination is not None:
+        faces.append({
+            'origin': None,
+            'destination': destination,
+            'threshold': 0.0
+        })
 
-    return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, multiple_faces_mode=multiple_faces_mode, partial_reface_ratio=partial_reface_ratio)
-
-def run(*vars):
-    video_path = vars[0]
-    origins = vars[1:(num_faces+1)]
-    destinations = vars[(num_faces+1):(num_faces*2)+1]
-    thresholds = vars[(num_faces*2)+1:-3]
-    preview = vars[-3]
-    face_mode = vars[-2]
-    partial_reface_ratio = vars[-1]
-
-    disable_similarity = (face_mode in ["Single Face", "Multiple Faces"])
-    multiple_faces_mode = (face_mode == "Multiple Faces")
-
-    faces = []
-    for k in range(num_faces):
-        if destinations[k] is not None:
-            faces.append({
-                'origin': origins[k] if not multiple_faces_mode else None,
-                'destination': destinations[k],
-                'threshold': thresholds[k] if not multiple_faces_mode else 0.0
-            })
-
-    mp4_path, gif_path = refacer.reface(video_path, faces, preview=preview, disable_similarity=disable_similarity, multiple_faces_mode=multiple_faces_mode, partial_reface_ratio=partial_reface_ratio)
-    return mp4_path, gif_path if gif_path else None
+    return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
+                               multiple_faces_mode=multiple_faces_mode, 
+                               partial_reface_ratio=partial_reface_ratio)
 
 def load_first_frame(filepath):
     if filepath is None:
@@ -104,7 +77,7 @@ def load_first_frame(filepath):
     frames = imageio.get_reader(filepath)
     return frames.get_data(0)
 
-def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
+def extract_faces_auto(filepath, refacer_instance, max_faces=1, isvideo=False):
     if filepath is None:
         return [None] * max_faces
 
@@ -127,7 +100,8 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
 
     try:
         faces = refacer_instance.extract_faces_from_image(temp_image_path, max_faces=max_faces)
-        return faces + [None] * (max_faces - len(faces))
+        result = faces + [None] * (max_faces - len(faces))
+        return result
     finally:
         if os.path.exists(temp_image_path):
             try:
@@ -135,247 +109,190 @@ def extract_faces_auto(filepath, refacer_instance, max_faces=5, isvideo=False):
             except Exception as e:
                 print(f"Warning: Could not delete temp file {temp_image_path}: {e}")
 
-def toggle_tabs_and_faces(mode, face_tabs, origin_faces):
-    if mode == "Single Face":
-        tab_updates = [gr.update(visible=(i == 0)) for i in range(len(face_tabs))]
-        origin_updates = [gr.update(visible=False) for _ in range(len(origin_faces))]
-    elif mode == "Multiple Faces":
-        tab_updates = [gr.update(visible=True) for _ in range(len(face_tabs))]
-        origin_updates = [gr.update(visible=False) for _ in range(len(origin_faces))]
-    else:
-        tab_updates = [gr.update(visible=True) for _ in range(len(face_tabs))]
-        origin_updates = [gr.update(visible=True) for _ in range(len(origin_faces))]
-    return tab_updates + origin_updates
+# Simplified for single face
+def distribute_faces(filepath):
+    faces = extract_faces_auto(filepath, refacer, max_faces=1)
+    return faces[0]
+
+# --- UI với CSS tùy chỉnh ---
+custom_css = """
+body {
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+.gradio-container {
+
+    margin: 0 auto;
+    background-color: #ffffff; /* Màu xanh navy đậm theo yêu cầu      max-width: 1400px !important; */
+    border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
+    border-radius: 10px;
+    box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
+    padding: 25px;
+}
+
+.header-container {
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: #0e1b4d;
+ /* Màu xanh navy đậm theo yêu cầu      */
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+}
+
+.header-logo {
+    margin-right: 20px; /* Khoảng cách giữa logo và text */
+}
+
+.header-text {
+    flex: 1;
+}
+
+.header-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-subtitle {
+    font-size: 1.2rem;
+    color: #bfdbfe;
+}
+
+.input-panel {
+    background-color: #6194c7;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+}
+
+.output-panel {
+    background-color: #6194c7;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    margin: 0 auto; /* Giúp căn giữa panel */
+    max-width: 800px; /* Giới hạn chiều rộng khi đứng một mình */
+}
+
+.control-panel {
+    border-radius: 10px;
+    padding: 50px;
+    margin: 20px;
+    text-align: center;
+}
+
+.face-container {
+    background-color: #6194c7;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+}
+
+.section-title {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: #0e1b4d; /* Giữ nguyên màu chữ xanh navy đậm */
+    padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
+    border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
+    border-radius: 5px; /* Bo tròn góc khung */
+    background-color: #e6f0ff; /* Nền xanh dương rất nhạt */
+    display: inline-block;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    color: #1e293b;
+    opacity: 0.7;
+}
+
+/* Thêm màu sắc navy cho các nút */
+button.primary {
+    background-color: #0e1b4d !important;
+}
+
+button.primary:hover {
+    background-color: #1a2e6c !important;
+}
+"""
+
+# Sử dụng theme đơn giản cho các phiên bản Gradio cũ
+theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
+
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
+    try:
+        with open("Logo.png", "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
+    except FileNotFoundError:
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
     
-def handle_tif_preview(filepath):
-    if filepath is None:
-        return None
-    preview_path = os.path.join("./tmp", f"tif_preview_{int(time.time() * 1000)}.jpg")
-    Image.open(filepath).convert('RGB').save(preview_path)
-    return preview_path
-
-# --- UI ---
-theme = gr.themes.Base(primary_hue="blue", secondary_hue="cyan")
-
-with gr.Blocks(theme=theme, title="ATMwigs - Try-on Wigs") as demo:
-    with open("Logo.png", "rb") as f:
-        icon_data = base64.b64encode(f.read()).decode()
-    icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:140px;height:140px;">'
-
-    with gr.Row():
-        gr.Markdown(f"""
-        <div style="display: flex; align-items: center;">
-        {icon_html}
-        
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-text">
+            <div class="header-title">ATMwigs</div>
+            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
         </div>
-        """)
+    </div>
+    """)
 
-    # --- IMAGE MODE ---
+# --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
+        # Hàng đầu tiên: Original Face và Select Wigs
         with gr.Row():
-            image_input = gr.Image(label="Original image", type="filepath")
-            image_output = gr.Image(label="Refaced image", interactive=False, type="filepath")
-            image_btn = gr.Button("Reface Image", variant="primary")
+            # Input Column - Face
+            with gr.Column(scale=1, elem_classes="face-container"):
+                gr.Markdown('<div class="section-title">Original Face</div>')
+                dest_img = gr.Image(label="Input Face", height=400)  
+            
+            # Input Column - Wigs
+            with gr.Column(scale=1, elem_classes="input-panel"):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
+        
+        # Hàng thứ hai: Nút Try On Wig
+        with gr.Row(elem_classes="control-panel"):
+            image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
+        
+        # Hàng thứ ba: Result
         with gr.Row():
-            face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
-            partial_reface_ratio_image = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-            image_btn = gr.Button("Reface Image", variant="primary")
-            face_mode_image = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
-        origin_image, destination_image, thresholds_image, face_tabs_image = [], [], [], []
-
-        for i in range(num_faces):
-            with gr.Tab(f"Face #{i+1}") as tab:
-                with gr.Row():
-                    origin = gr.Image(label="Face to replace")
-                    destination = gr.Image(label="Destination face")
-                threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.0)
-            origin_image.append(origin)
-            destination_image.append(destination)
-            thresholds_image.append(threshold)
-            face_tabs_image.append(tab)
-
-        face_mode_image.change(fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_image, origin_image), inputs=[face_mode_image], outputs=face_tabs_image + origin_image)
-        demo.load(fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_image, origin_image), inputs=None, outputs=face_tabs_image + origin_image)
-
-        image_btn.click(fn=run_image, inputs=[image_input] + origin_image + destination_image + thresholds_image + [face_mode_image, partial_reface_ratio_image], outputs=[image_output])
-        image_input.change(fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces), inputs=image_input, outputs=origin_image)
-        image_input.change(fn=lambda _: 0.0, inputs=image_input, outputs=partial_reface_ratio_image)
-
-    # --- GIF MODE ---
-    # with gr.Tab("GIF Mode"):
-    #     with gr.Row():
-    #         gif_input = gr.File(label="Original GIF", file_types=[".gif"])
-    #         gif_preview = gr.Video(label="GIF Preview", interactive=False)
-    #         gif_output = gr.Video(label="Refaced GIF (MP4)", interactive=False, format="mp4")
-    #         gif_file_output = gr.Image(label="Refaced GIF (GIF)", type="filepath")
-
-    #     with gr.Row():
-    #         face_mode_gif = gr.Radio(["Single Face", "Multiple Faces", "Faces By Match"], value="Single Face", label="Replacement Mode")
-    #         partial_reface_ratio_gif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-    #         gif_btn = gr.Button("Reface GIF", variant="primary")
-    #         preview_checkbox_gif = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
-
-    #     origin_gif, destination_gif, thresholds_gif, face_tabs_gif = [], [], [], []
-
-    #     for i in range(num_faces):
-    #         with gr.Tab(f"Face #{i+1}") as tab:
-    #             with gr.Row():
-    #                 origin = gr.Image(label="Face to replace")
-    #                 destination = gr.Image(label="Destination face")
-    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-    #         origin_gif.append(origin)
-    #         destination_gif.append(destination)
-    #         thresholds_gif.append(threshold)
-    #         face_tabs_gif.append(tab)
-
-    #     face_mode_gif.change(fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_gif, origin_gif), inputs=[face_mode_gif], outputs=face_tabs_gif + origin_gif)
-    #     demo.load(fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_gif, origin_gif), inputs=None, outputs=face_tabs_gif + origin_gif)
-
-    #     gif_btn.click(fn=run, inputs=[gif_input] + origin_gif + destination_gif + thresholds_gif + [preview_checkbox_gif, face_mode_gif, partial_reface_ratio_gif], outputs=[gif_output, gif_file_output])
-
-    #     gif_input.change(fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces), inputs=gif_input, outputs=origin_gif)
-    #     gif_input.change(fn=lambda file: file, inputs=gif_input, outputs=[gif_preview])
-    #     gif_input.change(fn=lambda _: 0.0, inputs=gif_input, outputs=partial_reface_ratio_gif)
-
+            # Output Column - Ở giữa để cân bằng giao diện
+            with gr.Column(scale=1, elem_classes="output-panel"):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
-    # --- TIF MODE ---
-    # with gr.Tab("TIFF Mode"):
-    #     with gr.Row():
-    #         tif_input = gr.File(label="Original TIF", file_types=[".tif", ".tiff"])
-    #         tif_preview = gr.Image(label="TIF Preview (Cover Page)", type="filepath")
-    #         tif_output_preview = gr.Image(label="Refaced TIF Preview (Cover Page)", type="filepath")
-    #         tif_output_file = gr.File(label="Refaced TIF (Download)", interactive=False)
+        # Connect events - simplified for just one wig
+        image_btn.click(
+            fn=run_image,
+            inputs=[image_input, dest_img],
+            outputs=image_output
+        )
 
-    #     with gr.Row():
-    #         face_mode_tif = gr.Radio(
-    #             choices=["Single Face", "Multiple Faces", "Faces By Match"],
-    #             value="Single Face",
-    #             label="Replacement Mode"
-    #         )
-    #         partial_reface_ratio_tif = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-    #         tif_btn = gr.Button("Reface TIF", variant="primary")
+    
+        # Process button in a separate row
 
-    #     origin_tif, destination_tif, thresholds_tif, face_tabs_tif = [], [], [], []
-
-    #     for i in range(num_faces):
-    #         with gr.Tab(f"Face #{i+1}") as tab:
-    #             with gr.Row():
-    #                 origin = gr.Image(label="Face to replace")
-    #                 destination = gr.Image(label="Destination face")
-    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-    #         origin_tif.append(origin)
-    #         destination_tif.append(destination)
-    #         thresholds_tif.append(threshold)
-    #         face_tabs_tif.append(tab)
-
-    #     face_mode_tif.change(
-    #         fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_tif, origin_tif),
-    #         inputs=[face_mode_tif],
-    #         outputs=face_tabs_tif + origin_tif
-    #     )
-
-    #     demo.load(
-    #         fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_tif, origin_tif),
-    #         inputs=None,
-    #         outputs=face_tabs_tif + origin_tif
-    #     )
-
-    #     def process_tif(tif_path, *vars):
-    #         original_img = Image.open(tif_path)
-    #         if hasattr(original_img, "n_frames") and original_img.n_frames > 1:
-    #             original_img.seek(0)
-    #         temp_preview_path = os.path.join("./tmp", f"tif_preview_{int(time.time() * 1000)}.jpg")
-    #         original_img.convert('RGB').save(temp_preview_path)
-
-    #         refaced_path = run_image(tif_path, *vars)
-
-    #         refaced_img = Image.open(refaced_path)
-    #         if hasattr(refaced_img, "n_frames") and refaced_img.n_frames > 1:
-    #             refaced_img.seek(0)
-    #         temp_refaced_preview_path = os.path.join("./tmp", f"refaced_tif_preview_{int(time.time() * 1000)}.jpg")
-    #         refaced_img.convert('RGB').save(temp_refaced_preview_path)
-
-    #         return temp_preview_path, temp_refaced_preview_path, refaced_path
-
-    #     tif_btn.click(
-    #         fn=lambda tif_path, *args: process_tif(tif_path, *args),
-    #         inputs=[tif_input] + origin_tif + destination_tif + thresholds_tif + [face_mode_tif, partial_reface_ratio_tif],
-    #         outputs=[tif_preview, tif_output_preview, tif_output_file]
-    #     )
-
-    #     tif_input.change(
-    #         fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces),
-    #         inputs=tif_input,
-    #         outputs=origin_tif
-    #     )
-
-    #     tif_input.change(
-    #         fn=handle_tif_preview,
-    #         inputs=tif_input,
-    #         outputs=tif_preview
-    #     )
-        
-    #     tif_input.change(fn=lambda _: 0.0, inputs=tif_input, outputs=partial_reface_ratio_tif)
-
-
-    # # --- VIDEO MODE ---
-    # with gr.Tab("Video Mode"):
-    #     with gr.Row():
-    #         video_input = gr.Video(label="Original video", format="mp4")
-    #         video_output = gr.Video(label="Refaced Video", interactive=False, format="mp4")
-
-    #     with gr.Row():
-    #         face_mode_video = gr.Radio(
-    #             choices=["Single Face", "Multiple Faces", "Faces By Match"],
-    #             value="Single Face",
-    #             label="Replacement Mode"
-    #         )
-    #         partial_reface_ratio_video = gr.Slider(label="Reface Ratio (0 = Full Face, 0.5 = Half Face)", minimum=0.0, maximum=0.5, value=0.0, step=0.1)
-    #         video_btn = gr.Button("Reface Video", variant="primary")
-
-    #     preview_checkbox_video = gr.Checkbox(label="Preview Generation (skip 90% of frames)", value=False)
-
-    #     origin_video, destination_video, thresholds_video, face_tabs_video = [], [], [], []
-
-    #     for i in range(num_faces):
-    #         with gr.Tab(f"Face #{i+1}") as tab:
-    #             with gr.Row():
-    #                 origin = gr.Image(label="Face to replace")
-    #                 destination = gr.Image(label="Destination face")
-    #             threshold = gr.Slider(label="Threshold", minimum=0.0, maximum=1.0, value=0.2)
-    #         origin_video.append(origin)
-    #         destination_video.append(destination)
-    #         thresholds_video.append(threshold)
-    #         face_tabs_video.append(tab)
-
-    #     face_mode_video.change(
-    #         fn=lambda mode: toggle_tabs_and_faces(mode, face_tabs_video, origin_video),
-    #         inputs=[face_mode_video],
-    #         outputs=face_tabs_video + origin_video
-    #     )
-
-    #     demo.load(
-    #         fn=lambda: toggle_tabs_and_faces("Single Face", face_tabs_video, origin_video),
-    #         inputs=None,
-    #         outputs=face_tabs_video + origin_video
-    #     )
-        
-    #     video_input.change(
-    #         fn=lambda filepath: extract_faces_auto(filepath, refacer, max_faces=num_faces, isvideo=True),
-    #         inputs=video_input,
-    #         outputs=origin_video
-    #     )
-        
-    #     video_input.change(fn=lambda _: 0.0, inputs=video_input, outputs=partial_reface_ratio_video)
-
-    #     video_btn.click(
-    #         fn=lambda *args: run(*args),
-    #         inputs=[video_input] + origin_video + destination_video + thresholds_video + [preview_checkbox_video, face_mode_video, partial_reface_ratio_video],
-    #         outputs=[video_output, gr.File(visible=False)]
-    #     )
+    # Footer
+    gr.HTML("""
+    <div class="footer">
+        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>Developed with ❤️ for virtual wig try-on</p>
+    </div>
+    """)
 
 # --- ngrok connect (optional) ---
-if args.ngrok:
+if args.ngrok and args.ngrok != "None":
     def connect(token, port, options):
         try:
             public_url = ngrok.connect(f"127.0.0.1:{port}", **options).url()
@@ -386,4 +303,15 @@ if args.ngrok:
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
 
 # --- Launch app ---
-demo.queue().launch(favicon_path="Logo.png", show_error=True, share=args.share_gradio, server_name=args.server_name, server_port=args.server_port)
+if __name__ == "__main__":
+    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
+    demo.queue().launch(
+        favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
+        show_error=True,
+        share=args.share_gradio,
+        server_name=args.server_name,
+        server_port=args.server_port
+    )
+    
+    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
+    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
