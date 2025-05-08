@@ -452,7 +452,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Input Face", height=400, type="filepath")  
+                dest_img = gr.Image(label="Input Face", type = "filepath", height=400")  
                 
                 # Thêm phân tích hình dạng khuôn mặt
                 analyze_btn = gr.Button("Phân tích hình dạng khuôn mặt", variant="primary")
