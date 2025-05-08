@@ -168,7 +168,6 @@ body {
     background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
-    margin-bottom: 15px;
     border: 1px solid #e2e8f0;
 }
 
@@ -181,18 +180,17 @@ body {
 
 .control-panel {
     border-radius: 10px;
-    padding: 15px;
-    margin: 15px 0;
+    padding: 50px;
+    margin: 20px;
     border: 1px solid #e2e8f0;
     text-align: center;
 }
 
 .face-container {
     background-color: #6194c7;
-    border-radius: 8px;
-    padding: 10px;
+    border-radius: 10px;
+    padding: 15px;
     border: 1px solid #e2e8f0;
-    margin-bottom: 10px;
 }
 
 .section-title {
