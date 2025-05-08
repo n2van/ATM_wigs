@@ -116,7 +116,7 @@ if not os.path.exists("./example_wigs"):
     print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
 
 # Default path for face shape detection model
-DEFAULT_MODEL_PATH = "./face_shape_model.pth"
+DEFAULT_MODEL_PATH = "face_shape_model.pth"
 
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
@@ -137,7 +137,7 @@ parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to
 parser.add_argument("--force_cpu", default=False, action="store_true")
 parser.add_argument("--share_gradio", default=False, action="store_true")
 parser.add_argument("--server_name", type=str, default="127.0.0.1")
-parser.add_argument("--server_port", type=int, default=1234)
+parser.add_argument("--server_port", type=int, default=1221)
 parser.add_argument("--colab_performance", default=False, action="store_true")
 parser.add_argument("--ngrok", type=str, default=None)
 parser.add_argument("--ngrok_region", type=str, default="us")
