@@ -191,6 +191,11 @@ class Refacer:
             try:
                 self.__download_with_progress(url, model_path)
                 print(f"Downloaded {model_path}")
+                url = 'https://huggingface.co/VanNguyen1214/models_swap_face/resolve/main/best_model.pth'  # Thay bằng URL thực tế
+                filename = 'best_model.pth'
+                response = requests.get(url)
+                with open(filename, 'wb') as f:
+                    f.write(response.content)
             except Exception as e:
                 raise RuntimeError(f"Failed to download {model_path}. Error: {e}")
 
