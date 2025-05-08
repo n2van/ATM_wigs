@@ -30,6 +30,24 @@ if os.path.exists("./tmp"):
 if not os.path.exists("./tmp"):
     os.makedirs("./tmp")
 
+# Tạo thư mục chứa các hình ảnh mẫu nếu chưa tồn tại
+if not os.path.exists("./example_wigs"):
+    os.makedirs("./example_wigs")
+    print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
+
+# Hàm tải các hình ảnh tóc giả mẫu
+def load_example_wigs():
+    example_wigs = []
+    wig_folder = "./example_wigs"  # Thư mục chứa các mẫu tóc giả
+    
+    if os.path.exists(wig_folder):
+        for file in os.listdir(wig_folder):
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                example_wigs.append(os.path.join(wig_folder, file))
+    
+    # Nếu không tìm thấy file nào, trả về danh sách trống
+    return example_wigs
+
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
 parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
@@ -114,6 +132,10 @@ def distribute_faces(filepath):
     faces = extract_faces_auto(filepath, refacer, max_faces=1)
     return faces[0]
 
+# Hàm load wig example để hiển thị trong Select Wigs
+def load_wig_example(example_path):
+    return example_path
+
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
 body {
@@ -122,9 +144,9 @@ body {
 }
 
 .gradio-container {
-
+    max-width: 1400px !important;
     margin: 0 auto;
-    background-color: #ffffff; /* Màu xanh navy đậm theo yêu cầu      max-width: 1400px !important; */
+    background-color: #ffffff;
     border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
     border-radius: 10px;
     box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
@@ -135,7 +157,6 @@ body {
     padding: 20px;
     margin-bottom: 20px;
     background-color: #0e1b4d;
- /* Màu xanh navy đậm theo yêu cầu      */
     color: white;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -168,6 +189,7 @@ body {
     background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
+    margin-bottom: 15px;
     border: 1px solid #e2e8f0;
 }
 
@@ -182,16 +204,18 @@ body {
 
 .control-panel {
     border-radius: 10px;
-    padding: 50px;
-    margin: 20px;
+    padding: 15px;
+    margin: 15px 0;
+    border: 1px solid #e2e8f0;
     text-align: center;
 }
 
 .face-container {
     background-color: #6194c7;
-    border-radius: 10px;
-    padding: 15px;
+    border-radius: 8px;
+    padding: 10px;
     border: 1px solid #e2e8f0;
+    margin-bottom: 10px;
 }
 
 .section-title {
@@ -214,6 +238,34 @@ body {
     font-size: 0.9rem;
     color: #1e293b;
     opacity: 0.7;
+}
+
+/* CSS cho gallery hình ảnh mẫu */
+.example-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.example-item {
+    cursor: pointer;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.example-item:hover {
+    transform: scale(1.05);
+    border-color: #0e1b4d;
+    box-shadow: 0 0 10px rgba(14, 27, 77, 0.3);
+}
+
+.example-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
 }
 
 /* Thêm màu sắc navy cho các nút */
@@ -248,7 +300,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     </div>
     """)
 
-# --- IMAGE MODE ---
+    # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
         # Hàng đầu tiên: Original Face và Select Wigs
         with gr.Row():
@@ -261,6 +313,29 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             with gr.Column(scale=1, elem_classes="input-panel"):
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
+                
+                # Hiển thị hình ảnh tóc giả mẫu
+                example_wigs = load_example_wigs()
+                if example_wigs:
+                    gr.Markdown('<div class="section-title">Example Wigs</div>')
+                    with gr.Row(elem_classes="example-gallery"):
+                        for wig in example_wigs:
+                            wig_btn = gr.Button(
+                                "",
+                                elem_classes="example-item"
+                            )
+                            wig_btn.style(
+                                full_width=False,
+                                size="sm",
+                                image=wig
+                            )
+                            # Khi nhấp vào một hình ảnh mẫu, load hình ảnh đó vào ô select wig
+                            wig_btn.click(
+                                fn=load_wig_example,
+                                inputs=[],
+                                outputs=[image_input],
+                                _js=f"() => '{wig}'"
+                            )
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row(elem_classes="control-panel"):
@@ -279,9 +354,6 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             inputs=[image_input, dest_img],
             outputs=image_output
         )
-
-    
-        # Process button in a separate row
 
     # Footer
     gr.HTML("""
