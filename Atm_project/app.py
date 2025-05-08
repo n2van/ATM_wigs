@@ -13,8 +13,88 @@ import base64
 import pyfiglet
 import shutil
 import time
+import torch
+import torchvision
+import torch.nn as nn
+import torchvision.transforms as T
 
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
+
+# Face Shape Predictor class from detection.py
+class FaceShapePredictor:
+    def __init__(self, model_path):
+        # Khởi tạo các lớp mặt
+        self.class_names = ['Heart', 'Oblong', 'Oval', 'Round', 'Square']
+        
+        # Tải model
+        try:
+            self.model = self.load_model(model_path)
+            print("Face shape detection model loaded successfully!")
+        except Exception as e:
+            print(f"Error: Cannot load face shape model: {e}")
+            self.model = None
+
+    def load_model(self, model_path):
+        # Khởi tạo mô hình
+        model = torchvision.models.efficientnet_b4(pretrained=False)
+        
+        # Thay đổi lớp classifier
+        model.classifier = nn.Sequential(
+            nn.Dropout(p=0.3, inplace=True),
+            nn.Linear(model.classifier[1].in_features, len(self.class_names))
+        )
+        
+        # Tải trọng số từ file PTH
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        
+        # Chế độ evaluation
+        model.eval()
+        
+        return model
+    
+    def predict(self, image_path):
+        if not os.path.exists(image_path):
+            print(f"Error: Image file '{image_path}' does not exist!")
+            return None
+        
+        if self.model is None:
+            return None
+        
+        try:
+            # Tạo transform
+            transform = T.Compose([
+                T.Resize((224, 224)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+            
+            # Đọc và xử lý ảnh
+            image = Image.open(image_path).convert('RGB')
+            input_tensor = transform(image).unsqueeze(0)
+            
+            # Dự đoán
+            with torch.no_grad():
+                output = self.model(input_tensor)
+                probabilities = torch.nn.functional.softmax(output, dim=1)[0]
+                _, predicted = torch.max(output, 1)
+            
+            predicted_class = self.class_names[predicted.item()]
+            confidence = probabilities[predicted.item()].item()
+            
+            # Lấy danh sách xác suất của tất cả các lớp
+            probs = probabilities.cpu().numpy()
+            
+            return {
+                "predicted_class": predicted_class,
+                "confidence": confidence,
+                "probabilities": {
+                    self.class_names[i]: float(probs[i]) for i in range(len(self.class_names))
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error when predicting: {e}")
+            return None
 
 def cleanup_temp(folder_path):
     try:
@@ -34,6 +114,9 @@ if not os.path.exists("./tmp"):
 if not os.path.exists("./example_wigs"):
     os.makedirs("./example_wigs")
     print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
+
+# Default path for face shape detection model
+DEFAULT_MODEL_PATH = "./face_shape_model.pth"
 
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
@@ -58,11 +141,15 @@ parser.add_argument("--server_port", type=int, default=1234)
 parser.add_argument("--colab_performance", default=False, action="store_true")
 parser.add_argument("--ngrok", type=str, default=None)
 parser.add_argument("--ngrok_region", type=str, default="us")
+parser.add_argument("--face_shape_model", type=str, default=DEFAULT_MODEL_PATH)
 args = parser.parse_args()
 
 # Initialize
 refacer = Refacer(force_cpu=args.force_cpu, colab_performance=args.colab_performance)
 num_faces = args.max_num_faces  # This will now be 1
+
+# Initialize face shape predictor
+face_shape_predictor = FaceShapePredictor(args.face_shape_model)
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -88,6 +175,26 @@ def run_image(image_path, destination):
     return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
                                multiple_faces_mode=multiple_faces_mode, 
                                partial_reface_ratio=partial_reface_ratio)
+
+def detect_face_shape(image_path):
+    if image_path is None:
+        return "No face uploaded"
+    
+    result = face_shape_predictor.predict(image_path)
+    if result is None:
+        return "Unable to detect face shape"
+    
+    # Format the result
+    face_shape = result["predicted_class"]
+    confidence = result["confidence"] * 100
+    
+    output_text = f"Detected Face Shape: {face_shape} ({confidence:.1f}%)\n\n"
+    output_text += "Probability Breakdown:\n"
+    
+    for shape, prob in result["probabilities"].items():
+        output_text += f"- {shape}: {prob*100:.1f}%\n"
+    
+    return output_text
 
 def load_first_frame(filepath):
     if filepath is None:
@@ -135,6 +242,30 @@ def distribute_faces(filepath):
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
     return example_path
+
+# Check if face shape and image match - returns recommendation
+def get_wig_recommendation(face_shape):
+    if face_shape is None or face_shape == "No face uploaded" or face_shape == "Unable to detect face shape":
+        return "Please upload a face image to get wig recommendations."
+    
+    # Extract the face shape from the detection text
+    if "Detected Face Shape:" in face_shape:
+        shape = face_shape.split("Detected Face Shape:")[1].split("(")[0].strip()
+    else:
+        return "Unable to determine face shape from detection."
+    
+    recommendations = {
+        "Heart": "For heart-shaped faces, try wigs with layered cuts that add width at the jawline. Medium-length styles with side-swept bangs work well.",
+        "Oblong": "For oblong faces, consider wigs with volume at the sides to create width. Avoid excessive length and try styles with bangs to shorten the face.",
+        "Oval": "For oval faces, most wig styles look flattering! You have a versatile face shape that works with any length or style.",
+        "Round": "For round faces, try wigs with layered or asymmetrical styles that add height. Longer wigs with face-framing layers help elongate the face.",
+        "Square": "For square faces, softening wigs with layers around the face work well. Try styles with side-swept bangs and avoid blunt-cut bobs."
+    }
+    
+    if shape in recommendations:
+        return recommendations[shape]
+    else:
+        return "No specific recommendation available for this face shape."
 
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
@@ -200,6 +331,22 @@ body {
     border: 1px solid #e2e8f0;
     margin: 0 auto; /* Giúp căn giữa panel */
     max-width: 800px; /* Giới hạn chiều rộng khi đứng một mình */
+}
+
+.detection-panel {
+    background-color: #e6f0ff;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #a0c8ff;
+    margin-top: 15px;
+}
+
+.recommendation-panel {
+    background-color: #f0f9ff;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #bae6fd;
+    margin-top: 10px;
 }
 
 .control-panel {
@@ -307,7 +454,18 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Input Face", height=400)  
+                dest_img = gr.Image(label="Input Face", height=400, type="filepath")
+                
+                # Add face detection button
+                detect_btn = gr.Button("Detect Face Shape", variant="primary")
+                
+                # Output for face shape detection
+                with gr.Column(elem_classes="detection-panel"):
+                    face_shape_output = gr.Textbox(label="Face Shape Detection", lines=8)
+                
+                # Recommendations based on face shape
+                with gr.Column(elem_classes="recommendation-panel"):
+                    recommendation_output = gr.Textbox(label="Recommended Wig Styles", lines=4)
             
             # Input Column - Wigs
             with gr.Column(scale=1, elem_classes="input-panel"):
@@ -315,28 +473,6 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
                 
                 # Hiển thị hình ảnh tóc giả mẫu
-                example_wigs = load_example_wigs()
-                if example_wigs:
-                    gr.Markdown('<div class="section-title">Example Wigs</div>')
-                    with gr.Row(elem_classes="example-gallery"):
-                        for wig in example_wigs:
-                            wig_btn = gr.Button(
-                                "",
-                                elem_classes="example-item"
-                            )
-                            wig_btn.style(
-                                full_width=False,
-                                size="sm",
-                                image=wig
-                            )
-                            # Khi nhấp vào một hình ảnh mẫu, load hình ảnh đó vào ô select wig
-                            wig_btn.click(
-                                fn=load_wig_example,
-                                inputs=[],
-                                outputs=[image_input],
-                                _js=f"() => '{wig}'"
-                            )
-        
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
@@ -353,6 +489,20 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             fn=run_image,
             inputs=[image_input, dest_img],
             outputs=image_output
+        )
+        
+        # Connect face detection
+        detect_btn.click(
+            fn=detect_face_shape,
+            inputs=[dest_img],
+            outputs=[face_shape_output]
+        )
+        
+        # Connect recommendation generation
+        detect_btn.click(
+            fn=get_wig_recommendation,
+            inputs=[face_shape_output],
+            outputs=[recommendation_output]
         )
 
     # Footer
