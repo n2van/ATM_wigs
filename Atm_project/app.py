@@ -172,14 +172,14 @@ body {
 }
 
 .output-panel {
-    background-color: ##6194c7;
+    background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
     border: 1px solid #e2e8f0;
 }
 
 .control-panel {
-    background-color: ##6194c7;
+    background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
     margin: 15px 0;
@@ -188,7 +188,7 @@ body {
 }
 
 .face-container {
-    background-color: #ffffff;
+    background-color: #6194c7;
     border-radius: 8px;
     padding: 10px;
     border: 1px solid #e2e8f0;
