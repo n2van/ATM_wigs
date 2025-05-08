@@ -246,38 +246,37 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     </div>
     """)
 
-    # --- IMAGE MODE ---
+# --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
         # Main layout with 3 equal columns
         with gr.Row():
-            # Input Column
-
+            # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
                 dest_img = gr.Image(label="Input Face", height=400)  
-
-
-
             
+            # Input Column - Wigs
             with gr.Column(scale=1, elem_classes="input-panel"):
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
-            
-
-
-            with gr.Column(elem_classes="control-panel"):
+        
+        # Process button - Di chuyển lên trước result image
+        with gr.Row(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
+        # Output Row - Tách result thành một hàng riêng
+        with gr.Row():
+            # Output Column
+            with gr.Column(scale=1, elem_classes="output-panel"):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
+        
         # Connect events - simplified for just one wig
-            image_btn.click(
-                fn=run_image,
-                inputs=[image_input, dest_img],
-                outputs=image_output
-            )
-
-    with gr.Row(scale=1, elem_classes="output-panel"):
-        gr.Markdown('<div class="section-title">Result</div>')
-        image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
+        image_btn.click(
+            fn=run_image,
+            inputs=[image_input, dest_img],
+            outputs=image_output
+        )
 
     
         # Process button in a separate row
