@@ -157,44 +157,144 @@ def create_dummy_image():
     dummy.save(temp_file.name)
     return temp_file.name
 
-def run_image(image_path, destination):
-    # Simplified for single wig mode
-    face_mode = "Single Face"
-    partial_reface_ratio = 0.0
+def load_image_from_path(image_path):
+    """Load an image from a file path and return a numpy array."""
+    if image_path is None:
+        return None
+    
+    if not os.path.exists(image_path):
+        print(f"File không tồn tại: {image_path}")
+        return None
+    
+    try:
+        # Đọc hình ảnh bằng PIL
+        image = Image.open(image_path).convert('RGB')
+        # Chuyển đổi sang numpy array
+        image_array = np.array(image)
+        return image_array
+    except Exception as e:
+        print(f"Lỗi khi đọc hình ảnh {image_path}: {e}")
+        return None
+
+def run_image(image_path, face_path):
+    print(f"START run_image with: image_path={image_path}, face_path={face_path}")
+    
+    # Kiểm tra đầu vào
+    if image_path is None or face_path is None:
+        print("image_path hoặc face_path là None")
+        return None
+    
+    # Đảm bảo cả hai đều là đường dẫn file hợp lệ
+    if not os.path.exists(image_path) or not os.path.exists(face_path):
+        print(f"File không tồn tại: image_path={image_path}, face_path={face_path}")
+        return None
+    
+    # Lưu ảnh kết quả vào file tạm
+    timestamp = int(time.time() * 1000)
+    output_path = os.path.join("./tmp", f"result_{timestamp}.png")
+    
+    # Thông số cho xử lý ảnh
     disable_similarity = True
     multiple_faces_mode = False
-
-    faces = []
-    if destination is not None:
-        faces.append({
-            'origin': None,
-            'destination': destination,
-            'threshold': 0.0
-        })
-
-    return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
-                               multiple_faces_mode=multiple_faces_mode, 
-                               partial_reface_ratio=partial_reface_ratio)
+    partial_reface_ratio = 0.0
+    
+    # Tạo danh sách faces cho refacer
+    faces = [{
+        'origin': None,
+        'destination': face_path,
+        'threshold': 0.0
+    }]
+    
+    print(f"Created faces array: {faces}")
+    
+    try:
+        # Mở và đọc file ảnh bằng PIL trước khi xử lý
+        wig_img = Image.open(image_path).convert('RGB')
+        wig_array = np.array(wig_img)
+        face_img = Image.open(face_path).convert('RGB')
+        face_array = np.array(face_img)
+        
+        print(f"Loaded wig image shape: {wig_array.shape}")
+        print(f"Loaded face image shape: {face_array.shape}")
+        
+        # Lưu tạm các ảnh đã xử lý
+        temp_wig_path = os.path.join("./tmp", f"temp_wig_{timestamp}.png")
+        temp_face_path = os.path.join("./tmp", f"temp_face_{timestamp}.png")
+        wig_img.save(temp_wig_path)
+        face_img.save(temp_face_path)
+        
+        # Cập nhật đường dẫn cho faces
+        faces[0]['destination'] = temp_face_path
+        
+        print("Calling refacer.reface_image...")
+        
+        # Gọi hàm reface_image với đường dẫn tạm thời
+        result = refacer.reface_image(
+            temp_wig_path, 
+            faces, 
+            disable_similarity=disable_similarity,
+            multiple_faces_mode=multiple_faces_mode,
+            partial_reface_ratio=partial_reface_ratio
+        )
+        
+        print(f"Result type: {type(result)}")
+        
+        # Xử lý kết quả
+        if result is not None:
+            if isinstance(result, str) and os.path.exists(result):
+                print(f"Returning result path: {result}")
+                return result
+            elif isinstance(result, np.ndarray):
+                print(f"Saving numpy array to {output_path}")
+                Image.fromarray(result).save(output_path)
+                return output_path
+            else:
+                print(f"Unexpected result type: {type(result)}")
+        else:
+            print("Result is None")
+        
+        return None
+    except Exception as e:
+        print(f"Lỗi trong run_image: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def detect_face_shape(image_path):
+    print(f"START detect_face_shape with: image_path={image_path}")
+    
     if image_path is None:
+        print("No face uploaded")
         return "No face uploaded"
     
-    result = face_shape_predictor.predict(image_path)
-    if result is None:
-        return "Unable to detect face shape"
+    if not os.path.exists(image_path):
+        print(f"File không tồn tại: {image_path}")
+        return "File không tồn tại"
     
-    # Format the result
-    face_shape = result["predicted_class"]
-    confidence = result["confidence"] * 100
-    
-    output_text = f"Detected Face Shape: {face_shape} ({confidence:.1f}%)\n\n"
-    output_text += "Probability Breakdown:\n"
-    
-    for shape, prob in result["probabilities"].items():
-        output_text += f"- {shape}: {prob*100:.1f}%\n"
-    
-    return output_text
+    try:
+        # Đảm bảo image_path là đường dẫn hợp lệ
+        result = face_shape_predictor.predict(image_path)
+        if result is None:
+            print("Không thể nhận diện hình dạng khuôn mặt")
+            return "Không thể nhận diện hình dạng khuôn mặt"
+        
+        # Format the result
+        face_shape = result["predicted_class"]
+        confidence = result["confidence"] * 100
+        
+        output_text = f"Detected Face Shape: {face_shape} ({confidence:.1f}%)\n\n"
+        output_text += "Probability Breakdown:\n"
+        
+        for shape, prob in result["probabilities"].items():
+            output_text += f"- {shape}: {prob*100:.1f}%\n"
+        
+        print(f"Face shape detection result: {face_shape}")
+        return output_text
+    except Exception as e:
+        print(f"Lỗi trong detect_face_shape: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Lỗi khi nhận diện: {str(e)}"
 
 def load_first_frame(filepath):
     if filepath is None:
@@ -244,28 +344,38 @@ def load_wig_example(example_path):
     return example_path
 
 # Check if face shape and image match - returns recommendation
-def get_wig_recommendation(face_shape):
-    if face_shape is None or face_shape == "No face uploaded" or face_shape == "Unable to detect face shape":
-        return "Please upload a face image to get wig recommendations."
+def get_wig_recommendation(face_shape_text):
+    print(f"START get_wig_recommendation with: {face_shape_text}")
     
-    # Extract the face shape from the detection text
-    if "Detected Face Shape:" in face_shape:
-        shape = face_shape.split("Detected Face Shape:")[1].split("(")[0].strip()
-    else:
-        return "Unable to determine face shape from detection."
+    if face_shape_text is None or face_shape_text == "No face uploaded" or face_shape_text == "File không tồn tại" or face_shape_text == "Không thể nhận diện hình dạng khuôn mặt":
+        return "Vui lòng tải lên ảnh khuôn mặt để nhận gợi ý tóc giả phù hợp."
     
-    recommendations = {
-        "Heart": "For heart-shaped faces, try wigs with layered cuts that add width at the jawline. Medium-length styles with side-swept bangs work well.",
-        "Oblong": "For oblong faces, consider wigs with volume at the sides to create width. Avoid excessive length and try styles with bangs to shorten the face.",
-        "Oval": "For oval faces, most wig styles look flattering! You have a versatile face shape that works with any length or style.",
-        "Round": "For round faces, try wigs with layered or asymmetrical styles that add height. Longer wigs with face-framing layers help elongate the face.",
-        "Square": "For square faces, softening wigs with layers around the face work well. Try styles with side-swept bangs and avoid blunt-cut bobs."
-    }
-    
-    if shape in recommendations:
-        return recommendations[shape]
-    else:
-        return "No specific recommendation available for this face shape."
+    # Trích xuất hình dạng khuôn mặt từ văn bản phát hiện
+    try:
+        if "Detected Face Shape:" in face_shape_text:
+            shape = face_shape_text.split("Detected Face Shape:")[1].split("(")[0].strip()
+            print(f"Extracted face shape: {shape}")
+        else:
+            print("Không thể xác định hình dạng khuôn mặt từ kết quả nhận diện")
+            return "Không thể xác định hình dạng khuôn mặt từ kết quả nhận diện."
+        
+        recommendations = {
+            "Heart": "Đối với khuôn mặt trái tim, hãy thử tóc giả có kiểu tóc xếp lớp giúp tăng độ rộng ở vùng xương hàm. Kiểu tóc dài vừa phải với tóc mái rẽ một bên hoạt động rất tốt.",
+            "Oblong": "Đối với khuôn mặt thuôn dài, hãy cân nhắc tóc giả có độ phồng ở hai bên để tạo độ rộng. Tránh kiểu tóc quá dài và hãy thử kiểu tóc có mái để rút ngắn khuôn mặt.",
+            "Oval": "Đối với khuôn mặt oval, hầu hết các kiểu tóc giả đều phù hợp! Bạn có hình dạng khuôn mặt đa năng phù hợp với mọi độ dài hoặc phong cách.",
+            "Round": "Đối với khuôn mặt tròn, hãy thử tóc giả có kiểu tóc xếp lớp hoặc bất đối xứng để tăng chiều cao. Tóc giả dài hơn với các lớp xung quanh khuôn mặt giúp kéo dài khuôn mặt.",
+            "Square": "Đối với khuôn mặt vuông, tóc giả mềm mại với các lớp xung quanh khuôn mặt hoạt động rất tốt. Hãy thử kiểu tóc có mái rẽ một bên và tránh kiểu tóc bob cắt thẳng."
+        }
+        
+        if shape in recommendations:
+            return recommendations[shape]
+        else:
+            return "Không có gợi ý cụ thể cho hình dạng khuôn mặt này."
+    except Exception as e:
+        print(f"Lỗi trong get_wig_recommendation: {e}")
+        import traceback
+        traceback.print_exc()
+        return "Đã xảy ra lỗi khi tạo gợi ý tóc giả."
 
 # --- UI với CSS tùy chỉnh ---
 custom_css = """
@@ -473,6 +583,28 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
                 
                 # Hiển thị hình ảnh tóc giả mẫu
+                example_wigs = load_example_wigs()
+                if example_wigs:
+                    gr.Markdown('<div class="section-title">Example Wigs</div>')
+                    with gr.Row(elem_classes="example-gallery"):
+                        for wig in example_wigs:
+                            wig_btn = gr.Button(
+                                "",
+                                elem_classes="example-item"
+                            )
+                            wig_btn.style(
+                                full_width=False,
+                                size="sm",
+                                image=wig
+                            )
+                            # Khi nhấp vào một hình ảnh mẫu, load hình ảnh đó vào ô select wig
+                            wig_btn.click(
+                                fn=load_wig_example,
+                                inputs=[],
+                                outputs=[image_input],
+                                _js=f"() => '{wig}'"
+                            )
+        
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
