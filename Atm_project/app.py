@@ -164,7 +164,7 @@ body {
 }
 
 .input-panel {
-    background-color: ##6194c7;
+    background-color: #6194c7;
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 15px;
