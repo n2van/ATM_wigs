@@ -245,24 +245,24 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
         # Main layout with 3 equal columns
-        with gr.Row():
+        with gr.Column():
             # Input Column
-            with gr.Column(scale=1, elem_classes="input-panel"):
+            with gr.Row(scale=1, elem_classes="input-panel"):
                 gr.Markdown('<div class="section-title">Input Image</div>')
                 image_input = gr.Image(label="Original face", type="filepath", height=400)
             
             # Wig Column
-            with gr.Column(scale=1, elem_classes="face-container"):
+            with gr.Row(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Wig to Try</div>')
                 dest_img = gr.Image(label="Wig", height=400)  # Just one wig
             
             # Output Column
-            with gr.Column(scale=1, elem_classes="output-panel"):
+            with gr.Row(scale=1, elem_classes="output-panel"):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
         # Process button in a separate row
-        with gr.Row(elem_classes="control-panel"):
+        with gr.Column(elem_classes="control-panel"):
             image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
         
         # Connect events - simplified for just one wig
