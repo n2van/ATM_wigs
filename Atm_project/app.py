@@ -245,16 +245,20 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     # --- IMAGE MODE ---
     with gr.Tab("Image Mode"):
         # Main layout with 3 equal columns
-        with gr.Column():
+        with gr.Row():
             # Input Column
-            with gr.Column(scale=1, elem_classes="input-panel"):
-                gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(label="Original face", type="filepath", height=400)
-            
-            # Wig Column
+
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Wig", height=400)  # Just one wig
+                dest_img = gr.Image(label="Input Face", height=400)  
+
+
+
+            
+            with gr.Column(scale=1, elem_classes="input-panel"):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
+            
             
             # Output Column
             with gr.Column(scale=1, elem_classes="output-panel"):
