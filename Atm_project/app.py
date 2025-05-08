@@ -122,9 +122,9 @@ body {
 }
 
 .gradio-container {
-    max-width: 1400px !important;
+
     margin: 0 auto;
-    background-color: #ffffff; /* Màu xanh navy đậm theo yêu cầu */
+    background-color: #ffffff; /* Màu xanh navy đậm theo yêu cầu      max-width: 1400px !important; */
     border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
     border-radius: 10px;
     box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
