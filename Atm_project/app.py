@@ -485,7 +485,7 @@ button.primary:hover {
 }
 
 /* Hãy đặt css riêng cho gallery */
-#wig-gallery-container {
+.wig-gallery-container {
     width: 100%;
     height: 320px;
     overflow-y: auto;
@@ -493,6 +493,7 @@ button.primary:hover {
     border-radius: 8px;
     border: 1px solid #a0c8ff;
     padding: 5px;
+    margin-bottom: 10px;
 }
 """
 
@@ -587,22 +588,21 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Hiển thị hình ảnh tóc giả mẫu với thiết kế cải tiến
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 
-                # Tạo container cho gallery
-                with gr.Box(elem_id="wig-gallery-container"):
+                # Tạo container cho gallery sử dụng Column thay vì Box
+                with gr.Column(elem_classes=["wig-gallery-container"]):
                     # Sử dụng Row để tối đa không gian
-                    with gr.Row():
-                        wig_gallery = gr.Gallery(
-                            value=[], 
-                            label="",  # Bỏ label để tiết kiệm không gian
-                            height=300,
-                            show_label=False,
-                            columns=5,
-                            object_fit="cover",
-                            show_download_button=False,
-                            show_share_button=False,
-                            preview=False
-                        )
-                    
+                    wig_gallery = gr.Gallery(
+                        value=[], 
+                        label="",  # Bỏ label để tiết kiệm không gian
+                        height=300,
+                        show_label=False,
+                        columns=5,
+                        object_fit="cover",
+                        show_download_button=False,
+                        show_share_button=False,
+                        preview=False
+                    )
+                
                 wig_gallery_placeholder = gr.Markdown(
                     '<div class="placeholder-text">👆 Analyze your face first to see suitable wigs 👆</div>'
                 )
