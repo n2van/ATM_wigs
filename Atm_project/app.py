@@ -186,7 +186,7 @@ def distribute_faces(filepath):
     faces = extract_faces_auto(filepath, refacer, max_faces=1)
     return faces[0]
 
-# Hàm phân tích hình dạng khuôn mặt và đề xuất kiểu tóc
+# Hàm phân tích hình dạng khuôn mặt
 def analyze_face_shape(image):
     if image is None:
         return "Vui lòng tải lên ảnh khuôn mặt để nhận diện"
@@ -220,6 +220,26 @@ def analyze_face_shape(image):
         return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})"
     else:
         return "Không thể phân tích hình dạng khuôn mặt"
+
+# Hàm cập nhật hiển thị tóc giả dựa trên kết quả phân tích khuôn mặt
+def update_wigs_display(face_shape_result):
+    if face_shape_result and "Hình dạng khuôn mặt:" in face_shape_result:
+        # Trích xuất hình dạng khuôn mặt từ kết quả
+        for shape in face_shapes:
+            if shape in face_shape_result:
+                # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
+                wigs = load_wigs_for_face_shape(shape)
+                return gr.Gallery.update(value=wigs), wigs[0] if wigs else None
+    
+    # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
+    all_wigs = load_example_wigs()
+    return gr.Gallery.update(value=all_wigs), all_wigs[0] if all_wigs else None
+
+# Hàm lấy đường dẫn wig đã chọn
+def get_selected_wig(evt: gr.SelectData, gallery):
+    if evt.index < len(gallery):
+        return gallery[evt.index]
+    return None
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
@@ -444,23 +464,10 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_input = gr.Image(type="filepath", height=400)
                 
                 # Hiển thị hình ảnh tóc giả mẫu
-                example_wigs = load_example_wigs()
-                if example_wigs:
-                    gr.Markdown('<div class="section-title">Example Wigs</div>')
-                    with gr.Row():
-                        for wig in example_wigs:
-                            # Tạo container để chứa cả nút và hình ảnh
-                            with gr.Column(scale=1):
-                                # Sử dụng Image component thay vì HTML
-                                gr.Image(value=wig, height=100)
-                                # Tạo nút để xử lý sự kiện click, sử dụng text thay vì label
-                                wig_btn = gr.Button("Select")
-                                # Khi nhấp vào nút, load hình ảnh đó vào ô select wig
-                                wig_btn.click(
-                                    fn=lambda wig_path=wig: wig_path,
-                                    inputs=[],
-                                    outputs=[image_input]
-                                )
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Tải tất cả các tóc giả mẫu mặc định khi mới mở ứng dụng
+                default_wigs = load_example_wigs()
+                wig_gallery = gr.Gallery(value=default_wigs, label="Example Wigs", height=200)
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
@@ -474,11 +481,22 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_output = gr.Image(interactive=False, type="filepath", height=400)
         
         # Connect events
-        # Nút phân tích khuôn mặt - vẫn giữ logic phân tích nhưng ẩn kết quả
+        # Nút phân tích khuôn mặt - phân tích và cập nhật danh sách tóc giả phù hợp
         analyze_btn.click(
             fn=analyze_face_shape,
             inputs=[dest_img],
             outputs=face_shape_result
+        ).then(
+            fn=update_wigs_display,
+            inputs=[face_shape_result],
+            outputs=[wig_gallery, image_input]
+        )
+        
+        # Khi chọn tóc giả từ gallery
+        wig_gallery.select(
+            fn=get_selected_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
         )
         
         # Try on wig
