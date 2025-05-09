@@ -338,29 +338,70 @@ body {
     object-fit: cover;
 }
 
-.example-item-btn {
-    width: 100%;
-    padding: 4px 8px !important;
-    margin-top: 5px !important;
-    font-size: 0.8rem !important;
-    text-align: center;
-    background-color: #0e1b4d !important;
-    color: white !important;
-    border-radius: 4px;
+/* Cải thiện style cho Gallery */
+.gallery-item {
+    transition: all 0.3s ease;
+    border: 3px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
     cursor: pointer;
 }
 
-.example-item-btn:hover {
-    background-color: #1a2e6c !important;
+.gallery-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    border-color: #6194c7;
 }
 
-/* Thêm màu sắc navy cho các nút */
+.gallery-item.selected {
+    border-color: #0e1b4d;
+    box-shadow: 0 0 0 3px rgba(14, 27, 77, 0.3);
+}
+
+/* Style cho placeholder text */
+.placeholder-text {
+    text-align: center;
+    padding: 20px;
+    background-color: #f8fafc;
+    border: 2px dashed #a0c8ff;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 15px 0;
+}
+
+/* Nút đẹp hơn */
 button.primary {
     background-color: #0e1b4d !important;
+    transition: all 0.3s ease !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
 }
 
 button.primary:hover {
     background-color: #1a2e6c !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(14, 27, 77, 0.2) !important;
+}
+
+/* Custom scroll bar cho gallery */
+.gallery-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.gallery-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.gallery-container::-webkit-scrollbar-thumb {
+    background: #a0c8ff;
+    border-radius: 10px;
+}
+
+.gallery-container::-webkit-scrollbar-thumb:hover {
+    background: #6194c7;
 }
 """
 
@@ -405,16 +446,31 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 # Đặt image_input là readonly để người dùng không thể upload
-                image_input = gr.Image(type="filepath", height=400, interactive=False)
+                image_input = gr.Image(type="filepath", height=400, interactive=False, label="Selected Wig")
                 
-                # Hiển thị hình ảnh tóc giả mẫu
+                # Hiển thị hình ảnh tóc giả mẫu với thiết kế cải tiến
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Ban đầu không hiển thị ảnh nào (truyền list rỗng)
-                wig_gallery = gr.Gallery(value=[], label="Example Wigs", height=200)
-                wig_gallery_placeholder = gr.Markdown("Analyze your face first to see suitable wigs")
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=250,
+                    columns=3,
+                    object_fit="contain",
+                    elem_id="wig_gallery"
+                )
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div class="placeholder-text">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
                 
-                # Nút để làm mới tóc giả (hiển thị tất cả)
-                refresh_wigs_btn = gr.Button("Show All Wigs")
+                # Nút để làm mới tóc giả (hiển thị tất cả) - style đẹp hơn
+                with gr.Row(elem_classes=["control-panel"]):
+                    refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["primary"])
+                    
+                    # Thêm thông tin hướng dẫn nhỏ
+                    gr.Markdown(
+                        '<div style="font-size: 0.9rem; margin-top: 10px; color: #64748b;">👉 Click on a wig to select it</div>'
+                    )
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
