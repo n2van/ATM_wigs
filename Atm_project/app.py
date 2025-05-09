@@ -372,7 +372,7 @@ body {
 
 /* Nút đẹp hơn */
 button.primary {
-    background-color: #0052cc !important; /* Màu xanh dương đậm */
+    background-color: #003d99 !important; /* Màu xanh dương đậm hơn */
     transition: all 0.3s ease !important;
     font-weight: 600 !important;
     letter-spacing: 0.5px !important;
@@ -380,14 +380,31 @@ button.primary {
 }
 
 button.primary:hover {
-    background-color: #0066ff !important; /* Màu xanh dương sáng hơn khi hover */
+    background-color: #0052cc !important; 
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
 
-/* Style chung cho tất cả các nút */
-button {
+/* Nút Analyze Face Shape */
+.analyze-btn {
+    background-color: #003d99 !important;
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important; /* Nhỏ hơn một chút */
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    font-size: 0.9rem !important; /* Font nhỏ hơn */
+}
+
+.analyze-btn:hover {
     background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Nút Show All Wigs */
+.show-all-btn {
+    background-color: #003d99 !important;
     color: white !important;
     border: none !important;
     padding: 8px 16px !important;
@@ -396,14 +413,14 @@ button {
     transition: all 0.3s ease !important;
 }
 
-button:hover {
-    background-color: #0066ff !important;
-    box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3) !important;
+.show-all-btn:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
 
 /* Đảm bảo nút Try On Wig nổi bật */
 .try-on-button {
-    background-color: #0052cc !important;
+    background-color: #003d99 !important;
     color: white !important;
     font-size: 1.1rem !important;
     padding: 10px 20px !important;
@@ -411,6 +428,15 @@ button:hover {
     margin: 0 auto !important;
     width: 80% !important;
     max-width: 300px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.try-on-button:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
 
 /* Custom scroll bar cho gallery */
@@ -466,7 +492,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 dest_img = gr.Image(height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
-                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["primary"])
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["analyze-btn"])
                 
                 # Ẩn kết quả phân tích (để sử dụng trong backend)
                 face_shape_result = gr.Textbox(visible=False)
@@ -494,7 +520,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả) - style đẹp hơn
                 with gr.Row(elem_classes=["control-panel"]):
-                    refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["primary"])
+                    refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["show-all-btn"])
                     
                     # Thêm thông tin hướng dẫn nhỏ
                     gr.Markdown(
