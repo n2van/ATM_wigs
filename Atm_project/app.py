@@ -353,15 +353,15 @@ body {
 /* Style cho gallery và các item trong gallery */
 .gradio-gallery {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
-    gap: 8px !important;
+    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
+    gap: 10px !important;
     width: 100% !important;
     overflow: hidden !important;
 }
 
 .gradio-gallery .thumbnail-image {
     width: 100% !important;
-    height: 100px !important;
+    height: 120px !important; /* Tăng chiều cao một chút để tỉ lệ đẹp hơn */
     object-fit: cover !important;
     border-radius: 8px !important;
     cursor: pointer !important;
@@ -377,7 +377,7 @@ body {
 
 /* Điều chỉnh kích thước hàng và cột trong gallery */
 .wrap.svelte-p3y7hu {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
     gap: 10px !important;
     width: 100% !important;
     justify-content: space-between !important;
@@ -388,7 +388,6 @@ body {
 .gallery-container {
     width: 100% !important;
     height: auto !important;
-    max-height: 300px !important;
     overflow-y: auto !important;
     padding: 10px !important;
     background-color: #f0f9ff !important;
@@ -590,7 +589,13 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Tải tất cả các tóc giả mẫu mặc định khi mới mở ứng dụng
                 default_wigs = wig_recommender.get_all_wigs()
-                wig_gallery = gr.Gallery(value=default_wigs, label="Example Wigs", height=200)
+                wig_gallery = gr.Gallery(
+                    value=default_wigs, 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,  # Hiển thị chính xác 5 ảnh trên một hàng
+                    elem_classes=["gallery-container"]
+                )
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
                 refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
