@@ -40,7 +40,7 @@ if not os.path.exists("./tmp"):
 # Tạo thư mục chứa các hình ảnh mẫu nếu chưa tồn tại
 if not os.path.exists("./example_wigs"):
     os.makedirs("./example_wigs")
-    print("Created folder 'example_wigs' is done . Please add wigs in the folder.")
+    print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
 
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
@@ -200,11 +200,11 @@ def analyze_face_shape(image):
             "Square": "Tóc xoăn mềm, tóc xếp tầng, tóc pixie với mái dài hoặc tóc bob dài."
         }
         
-        recommendation = recommendations.get(face_shape, "No recommmend.")
+        recommendation = recommendations.get(face_shape, "Không có đề xuất cụ thể.")
         
-        return f"Faceshape is: {face_shape} (Accuracy: {confidence:.2%})", recommendation
+        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})", recommendation
     else:
-        return "No detect your face", None
+        return "Không thể phân tích hình dạng khuôn mặt", None
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
@@ -403,7 +403,8 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 
                 # Thêm phân tích hình dạng khuôn mặt
                 analyze_btn = gr.Button("Analysis and Recommend for You", variant="primary")
-                face_recommendation = gr.Textbox(label="Recommend Wigs", elem_classes="face-recommendation")
+                face_shape_result = gr.Textbox(label="Kết quả phân tích", elem_classes="face-analysis")
+                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc", elem_classes="face-recommendation")
             
             # Input Column - Wigs
             with gr.Column(scale=1, elem_classes="input-panel"):
