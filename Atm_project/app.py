@@ -315,13 +315,12 @@ body {
     padding: 20px;
     font-size: 0.9rem;
     opacity: 0.7;
-    text-color: #000000;
-    padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
-    border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
-    border-radius: 5px; /* Bo tròn góc khung */
-    background-color: #e6f0ff; /* Nền xanh dương rất nhạt */
+    color: #000000 !important; /* Đảm bảo màu chữ đen */
+    padding: 5px 10px; 
+    border: 2px solid #a0c8ff;
+    border-radius: 5px;
+    background-color: #e6f0ff;
 }
-
 
 .face-analysis {
     background-color: #f0f9ff;
@@ -496,6 +495,33 @@ button.primary:hover {
     padding: 5px;
     margin-bottom: 10px;
 }
+
+/* Style đồng nhất cho tất cả các hình ảnh */
+.image-container img,
+.gradio-image img,
+.original-image img,
+.wig-image img,
+.result-image img {
+    height: 450px !important; /* Chiều cao cố định */
+    width: 100% !important;
+    object-fit: contain !important; /* Giữ nguyên tỉ lệ ảnh */
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Style cho container chứa hình ảnh */
+.image-display-container {
+    height: 480px !important; /* Thêm khoảng trống cho label */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100%;
+}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -572,7 +598,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(height=400)  
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
                 
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
@@ -583,7 +609,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Wigs
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(type="filepath", height=400)
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
                 
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
@@ -613,7 +639,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Output Column - Ở giữa để cân bằng giao diện
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(interactive=False, type="filepath", height=400)
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
