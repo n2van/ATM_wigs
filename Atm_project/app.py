@@ -40,7 +40,7 @@ if not os.path.exists("./tmp"):
 # Tạo thư mục chứa các hình ảnh mẫu nếu chưa tồn tại
 if not os.path.exists("./example_wigs"):
     os.makedirs("./example_wigs")
-    print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
+    print("Created folder 'example_wigs' is done . Please add wigs in the folder.")
 
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
@@ -403,8 +403,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 
                 # Thêm phân tích hình dạng khuôn mặt
                 analyze_btn = gr.Button("Analysis and Recommend for You", variant="primary")
-                face_shape_result = gr.Textbox(label="Kết quả phân tích", elem_classes="face-analysis")
-                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc", elem_classes="face-recommendation")
+                face_recommendation = gr.Textbox(label="Recommend Wigs", elem_classes="face-recommendation")
             
             # Input Column - Wigs
             with gr.Column(scale=1, elem_classes="input-panel"):
