@@ -42,35 +42,15 @@ if not os.path.exists("./example_wigs"):
     os.makedirs("./example_wigs")
     print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
 
-# Tạo các thư mục con cho từng kiểu khuôn mặt
-face_shapes = ["Heart", "Oblong", "Oval", "Round", "Square"]
-for shape in face_shapes:
-    face_shape_folder = f"./example_wigs/{shape}"
-    if not os.path.exists(face_shape_folder):
-        os.makedirs(face_shape_folder)
-        print(f"Đã tạo thư mục '{face_shape_folder}' cho kiểu khuôn mặt {shape}.")
-
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
     example_wigs = []
     wig_folder = "./example_wigs"  # Thư mục chứa các mẫu tóc giả
     
     if os.path.exists(wig_folder):
-        # Tìm kiếm file trong thư mục gốc
         for file in os.listdir(wig_folder):
-            file_path = os.path.join(wig_folder, file)
-            if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                example_wigs.append(file_path)
-        
-        # Tìm kiếm trong các thư mục con của hình dạng khuôn mặt
-        for shape in face_shapes:
-            shape_folder = os.path.join(wig_folder, shape)
-            if os.path.exists(shape_folder):
-                for file in os.listdir(shape_folder):
-                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        shape_wig_path = os.path.join(shape_folder, file)
-                        if shape_wig_path not in example_wigs:
-                            example_wigs.append(shape_wig_path)
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                example_wigs.append(os.path.join(wig_folder, file))
     
     # Nếu không tìm thấy file nào, trả về danh sách trống
     return example_wigs
@@ -86,15 +66,9 @@ def load_wigs_for_face_shape(face_shape):
             if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                 wigs.append(os.path.join(face_shape_wig_folder, file))
     
-    # Nếu không có tóc giả trong thư mục hình dạng mặt, 
-    # trả về tất cả các file trong thư mục gốc
+    # Nếu không có, sử dụng tất cả các tóc giả
     if not wigs:
-        wig_folder = "./example_wigs"
-        if os.path.exists(wig_folder):
-            for file in os.listdir(wig_folder):
-                file_path = os.path.join(wig_folder, file)
-                if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    wigs.append(file_path)
+        wigs = load_example_wigs()
     
     return wigs
 
