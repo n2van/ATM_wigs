@@ -282,14 +282,6 @@ body {
     display: inline-block;
 }
 
-.footer {
-    text-align: center;
-    margin-top: 40px;
-    padding: 20px;
-    border-top: 1px solid #e2e8f0;
-    font-size: 0.9rem;
-    color: #000000;
-}
 
 .face-analysis {
     background-color: #f0f9ff;
@@ -569,10 +561,15 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
         def select_wig(evt, gallery):
             try:
+                # Debug thông tin
+                print(f"Debug - event: {evt}, type: {type(evt)}")
+                print(f"Debug - gallery: {gallery}, type: {type(gallery)}")
+                
                 # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
                 if evt is None:
                     return None
                 
+                index = None
                 # Trường hợp evt là index trực tiếp (số nguyên)
                 if isinstance(evt, int):
                     index = evt
@@ -583,21 +580,54 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 elif isinstance(evt, dict) and 'index' in evt:
                     index = evt['index']
                 else:
-                    print(f"Debug - event type: {type(evt)}, value: {evt}")
-                    return None
+                    # Cố gắng chuyển đổi thành số nguyên
+                    try:
+                        index = int(evt)
+                    except:
+                        print(f"Debug - cannot convert event to index: {evt}")
+                        return None
+                
+                print(f"Debug - index: {index}")
                 
                 # Kiểm tra gallery là list hoặc dict
                 if isinstance(gallery, list) and 0 <= index < len(gallery):
-                    return gallery[index]
+                    chosen_wig = gallery[index]
+                    print(f"Debug - chosen wig: {chosen_wig}")
+                    return chosen_wig
                 elif isinstance(gallery, dict) and index in gallery:
                     return gallery[index]
+                else:
+                    print(f"Debug - invalid index or gallery type: index={index}, gallery_type={type(gallery)}")
+                    
                 return None
             except Exception as e:
                 print(f"Debug - Error in select_wig: {str(e)}")
                 return None
             
+        # Thêm xử lý trực tiếp cho sự kiện click
+        def gallery_click_handler(gallery, evt: gr.SelectData):
+            try:
+                if evt is None or gallery is None:
+                    return None
+                index = evt.index
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    chosen_wig = gallery[index]
+                    print(f"Debug - chosen wig from click: {chosen_wig}")
+                    return chosen_wig
+                return None
+            except Exception as e:
+                print(f"Debug - Error in gallery click: {str(e)}")
+                return None
+        
         wig_gallery.select(
             fn=select_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
+        )
+        
+        # Thêm xử lý click thay thế
+        wig_gallery.click(
+            fn=gallery_click_handler,
             inputs=[wig_gallery],
             outputs=[image_input]
         )
@@ -611,7 +641,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
     # Footer
     gr.HTML("""
-    <div class="footer">
+    <div class="section-title">
         <p>© 2023 ATMwigs - All rights reserved</p>
         <p>Developed with ❤️ for virtual wig try-on</p>
     </div>
