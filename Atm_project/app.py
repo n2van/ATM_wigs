@@ -371,40 +371,45 @@ body {
 
 /* Cải thiện style cho Gallery */
 .gallery-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 8px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 10px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
     background-color: #f0f9ff;
     border-radius: 8px;
     border: 1px solid #a0c8ff;
-    width: 100%;
+    overflow: hidden !important;
 }
 
-.gallery-item {
-    transition: all 0.3s ease;
-    border: 3px solid transparent;
-    border-radius: 8px;
-    overflow: hidden;
-    cursor: pointer;
-    height: 110px;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+/* Tối ưu grid-wrap của Gradio */
+.grid-wrap, div[class*='svelte'], .grid-wrap.svelte-842rpi {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    gap: 4px !important;
+    justify-content: space-between !important;
 }
 
-.gallery-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+/* Tối ưu từng item trong gallery */
+.grid-wrap img, div[class*='svelte'] img {
+    width: 100% !important;
+    height: 150px !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+    transition: transform 0.3s !important;
 }
 
-.gallery-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
-    border-color: #003d99;
+.grid-wrap img:hover, div[class*='svelte'] img:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    cursor: pointer !important;
+}
+
+/* Loại bỏ padding và margin thừa */
+.gradio-gallery {
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Style cho placeholder text */
@@ -519,6 +524,28 @@ button.primary:hover {
     padding: 5px;
     margin-bottom: 10px;
 }
+
+/* Đảm bảo nút Try On Wig nổi bật */
+.common-button {
+    background-color: #003d99 !important;
+    color: white !important;
+    font-size: 1.1rem !important;
+    padding: 10px 20px !important;
+    display: block !important;
+    margin: 10px auto !important;
+    width: 80% !important;
+    max-width: 300px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.common-button:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+    transform: translateY(-2px) !important;
+}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -598,7 +625,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 dest_img = gr.Image(height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
-                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["analyze-btn"])
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["common-button"])
                 
                 # Ẩn kết quả phân tích (để sử dụng trong backend)
                 face_shape_result = gr.Textbox(visible=False)
@@ -615,11 +642,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 wig_gallery = gr.Gallery(value=default_wigs, label="Example Wigs", height=200)
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
-                refresh_wigs_btn = gr.Button("Show All Wigs")
+                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["common-button"])
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
-            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+            image_btn = gr.Button("Try On Wig", elem_classes=["common-button"])
         
         # Hàng thứ ba: Result
         with gr.Row():
