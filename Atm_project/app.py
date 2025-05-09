@@ -163,11 +163,11 @@ def update_wig_examples(face_shape_result):
             if shape in face_shape_result:
                 # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
                 wigs = wig_recommender.get_wigs_for_face_shape(shape)
-                return gr.Gallery.update(value=wigs)
+                return wigs
     
     # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
     all_wigs = wig_recommender.get_all_wigs()
-    return gr.Gallery.update(value=all_wigs)
+    return all_wigs
 
 # Hàm lấy đường dẫn wig đã chọn
 def get_selected_wig(evt: gr.SelectData, gallery):
@@ -409,7 +409,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Tải tất cả các tóc giả mẫu mặc định khi mới mở ứng dụng
-                default_wigs = load_example_wigs()
+                default_wigs = wig_recommender.get_all_wigs()
                 wig_gallery = gr.Gallery(value=default_wigs, label="Example Wigs", height=200)
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
@@ -440,14 +440,19 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         
         # Nút làm mới tóc giả (hiển thị tất cả)
         refresh_wigs_btn.click(
-            fn=lambda: gr.Gallery.update(value=load_example_wigs()),
+            fn=lambda: wig_recommender.get_all_wigs(),
             inputs=[],
             outputs=[wig_gallery]
         )
         
-        # Khi chọn tóc giả từ gallery
+        # Khi chọn tóc giả từ gallery - dùng event select
+        def select_wig(evt, gallery):
+            if evt and hasattr(evt, 'index') and evt.index < len(gallery):
+                return gallery[evt.index]
+            return None
+            
         wig_gallery.select(
-            fn=lambda evt, gallery: gallery[evt.index] if evt.index < len(gallery) else None,
+            fn=select_wig,
             inputs=[wig_gallery],
             outputs=[image_input]
         )
