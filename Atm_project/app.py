@@ -288,8 +288,7 @@ body {
     padding: 20px;
     border-top: 1px solid #e2e8f0;
     font-size: 0.9rem;
-    color: #1e293b;
-    opacity: 0.7;
+    color: #000000;
 }
 
 .face-analysis {
