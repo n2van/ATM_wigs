@@ -18,83 +18,10 @@ import torchvision
 import torch.nn as nn
 import torchvision.transforms as T
 
+# Import FaceShapePredictor từ detection.py
+from detection import FaceShapePredictor
+
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
-
-# Thêm lớp FaceShapePredictor từ file detection.py
-class FaceShapePredictor:
-    def __init__(self, model_path):
-        # Khởi tạo các lớp mặt
-        self.class_names = ['Heart', 'Oblong', 'Oval', 'Round', 'Square']
-        
-        # Tải model
-        try:
-            self.model = self.load_model(model_path)
-            print("Đã tải model nhận dạng khuôn mặt thành công!")
-        except Exception as e:
-            print(f"Lỗi: Không thể tải model nhận dạng khuôn mặt: {e}")
-            self.model = None
-
-    def load_model(self, model_path):
-        # Khởi tạo mô hình
-        model = torchvision.models.efficientnet_b4(pretrained=False)
-        
-        # Thay đổi lớp classifier
-        model.classifier = nn.Sequential(
-            nn.Dropout(p=0.3, inplace=True),
-            nn.Linear(model.classifier[1].in_features, len(self.class_names))
-        )
-        
-        # Tải trọng số từ file PTH
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-        
-        # Chế độ evaluation
-        model.eval()
-        
-        return model
-    
-    def predict(self, image_path):
-        if self.model is None:
-            return None
-            
-        if not os.path.exists(image_path):
-            print(f"Lỗi: File ảnh '{image_path}' không tồn tại!")
-            return None
-        
-        try:
-            # Tạo transform
-            transform = T.Compose([
-                T.Resize((224, 224)),
-                T.ToTensor(),
-                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            ])
-            
-            # Đọc và xử lý ảnh
-            image = Image.open(image_path).convert('RGB')
-            input_tensor = transform(image).unsqueeze(0)
-            
-            # Dự đoán
-            with torch.no_grad():
-                output = self.model(input_tensor)
-                probabilities = torch.nn.functional.softmax(output, dim=1)[0]
-                _, predicted = torch.max(output, 1)
-            
-            predicted_class = self.class_names[predicted.item()]
-            confidence = probabilities[predicted.item()].item()
-            
-            # Lấy danh sách xác suất của tất cả các lớp
-            probs = probabilities.cpu().numpy()
-            
-            return {
-                "predicted_class": predicted_class,
-                "confidence": confidence,
-                "probabilities": {
-                    self.class_names[i]: float(probs[i]) for i in range(len(self.class_names))
-                }
-            }
-            
-        except Exception as e:
-            print(f"Lỗi khi dự đoán: {e}")
-            return None
 
 def cleanup_temp(folder_path):
     try:
@@ -238,7 +165,27 @@ def analyze_face_shape(image):
     if image is None:
         return "Vui lòng tải lên ảnh khuôn mặt để nhận diện", None
     
-    result = face_predictor.predict(image)
+    # Lưu ảnh tạm thời nếu là một mảng numpy từ Gradio
+    if isinstance(image, np.ndarray):
+        temp_file = tempfile.NamedTemporaryFile(delete=False, dir="./tmp", suffix=".png")
+        Image.fromarray(image).save(temp_file.name)
+        image_path = temp_file.name
+    else:
+        # Nếu là đường dẫn file
+        image_path = image
+    
+    # Sử dụng phương thức predict từ detection.py
+    if isinstance(image, Image.Image):
+        result = face_predictor.predict(image=image)
+    else:
+        result = face_predictor.predict(image_path=image_path)
+    
+    # Xóa file tạm nếu đã tạo
+    if isinstance(image, np.ndarray) and os.path.exists(image_path):
+        try:
+            os.remove(image_path)
+        except:
+            pass
     
     if result:
         face_shape = result["predicted_class"]
@@ -452,10 +399,10 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1, elem_classes="face-container"):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Input Face", height=400")  
+                dest_img = gr.Image(label="Input Face", height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt
-                analyze_btn = gr.Button("Phân tích hình dạng khuôn mặt", variant="primary")
+                analyze_btn = gr.Button("Analysis and Recommend for You", variant="primary")
                 face_shape_result = gr.Textbox(label="Kết quả phân tích", elem_classes="face-analysis")
                 face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc", elem_classes="face-recommendation")
             
