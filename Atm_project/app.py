@@ -330,7 +330,7 @@ body {
     padding: 20px;
     font-size: 0.9rem;
     opacity: 0.7;
-    color: #000000; 
+    text-color: #000000;
     padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
     border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
     border-radius: 5px; /* Bo tròn góc khung */
