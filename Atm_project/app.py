@@ -169,10 +169,12 @@ def update_wig_examples(face_shape_result):
     all_wigs = wig_recommender.get_all_wigs()
     return all_wigs
 
-# Hàm lấy đường dẫn wig đã chọn
-def get_selected_wig(evt: gr.SelectData, gallery):
-    if evt.index < len(gallery):
-        return gallery[evt.index]
+# Hàm xử lý chọn wig đơn giản nhất có thể
+def select_wig_direct(index, gallery):
+    if gallery and isinstance(gallery, list) and index < len(gallery):
+        selected = gallery[index]
+        print(f"Selected wig directly at index {index}: {selected}")
+        return selected
     return None
 
 # Hàm load wig example để hiển thị trong Select Wigs
@@ -481,6 +483,17 @@ button.primary:hover {
 .gallery-container::-webkit-scrollbar-thumb:hover {
     background: #6194c7;
 }
+
+/* Hãy đặt css riêng cho gallery */
+#wig-gallery-container {
+    width: 100%;
+    height: 320px;
+    overflow-y: auto;
+    background-color: #f0f9ff;
+    border-radius: 8px;
+    border: 1px solid #a0c8ff;
+    padding: 5px;
+}
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -574,20 +587,34 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Hiển thị hình ảnh tóc giả mẫu với thiết kế cải tiến
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 
-                # Tối ưu gallery để lấp đầy container
-                wig_gallery = gr.Gallery(
-                    value=[], 
-                    label="Example Wigs", 
-                    height=300,
-                    columns=5,   # Tăng số cột để lấp đầy
-                    object_fit="cover",
-                    elem_id="wig_gallery",
-                    elem_classes=["gallery-container"],
-                    allow_preview=False  # Tắt chế độ xem trước để tránh lỗi
-                )
+                # Tạo container cho gallery
+                with gr.Box(elem_id="wig-gallery-container"):
+                    # Sử dụng Row để tối đa không gian
+                    with gr.Row():
+                        wig_gallery = gr.Gallery(
+                            value=[], 
+                            label="",  # Bỏ label để tiết kiệm không gian
+                            height=300,
+                            show_label=False,
+                            columns=5,
+                            object_fit="cover",
+                            show_download_button=False,
+                            show_share_button=False,
+                            preview=False
+                        )
+                    
                 wig_gallery_placeholder = gr.Markdown(
                     '<div class="placeholder-text">👆 Analyze your face first to see suitable wigs 👆</div>'
                 )
+                
+                # Thêm dropdown để chọn tóc giả (backup plan)
+                with gr.Row():
+                    wig_dropdown = gr.Dropdown(
+                        label="Or select wig from dropdown", 
+                        choices=[], 
+                        interactive=True,
+                        visible=False
+                    )
                 
                 # Nút để làm mới tóc giả
                 with gr.Row(elem_classes=["control-panel"]):
@@ -618,7 +645,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         ).then(
             fn=update_wig_examples,
             inputs=[face_shape_result],
-            outputs=[wig_gallery]
+            outputs=[wig_gallery, wig_dropdown]
         ).then(
             # Khi gallery cập nhật, ẩn placeholder text
             fn=lambda: "",
@@ -626,22 +653,51 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             outputs=[wig_gallery_placeholder]
         )
         
-        # Nút làm mới tóc giả (hiển thị tất cả)
+        # Cập nhật dropdown khi gallery cập nhật
+        def update_dropdown(gallery_images):
+            if gallery_images and isinstance(gallery_images, list):
+                # Tạo danh sách các tùy chọn: (label: "Wig #N", value: đường dẫn)
+                return gr.Dropdown.update(
+                    choices=[f"Wig #{i+1}" for i in range(len(gallery_images))],
+                    value=None,
+                    visible=True
+                )
+            return gr.Dropdown.update(visible=False)
+        
+        # Cập nhật refresh wigs button
         refresh_wigs_btn.click(
-            fn=lambda: wig_recommender.get_all_wigs(),
+            fn=lambda: (wig_recommender.get_all_wigs(), ""),
             inputs=[],
-            outputs=[wig_gallery]
+            outputs=[wig_gallery, wig_gallery_placeholder]
         ).then(
-            # Khi gallery cập nhật, ẩn placeholder text
-            fn=lambda: "",
-            inputs=[],
-            outputs=[wig_gallery_placeholder]
+            fn=update_dropdown,
+            inputs=[wig_gallery],
+            outputs=[wig_dropdown]
         )
         
-        # Kết nối sự kiện select cho gallery - apply trực tiếp
+        # Kết nối sự kiện select cho gallery - try trực tiếp
         wig_gallery.select(
-            fn=wig_selector.select_wig_from_gallery,
+            fn=select_wig_direct,
             inputs=[wig_gallery],
+            outputs=[image_input]
+        )
+        
+        # Xử lý chọn từ dropdown
+        def select_from_dropdown(index, gallery):
+            try:
+                if index is None or gallery is None:
+                    return None
+                i = int(index.split("#")[1]) - 1
+                if 0 <= i < len(gallery):
+                    return gallery[i]
+                return None
+            except:
+                return None
+        
+        # Kết nối dropdown change event
+        wig_dropdown.change(
+            fn=select_from_dropdown,
+            inputs=[wig_dropdown, wig_gallery], 
             outputs=[image_input]
         )
         
