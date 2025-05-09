@@ -188,7 +188,8 @@ def analyze_and_recommend(image):
         return wigs if wigs else []
     return wig_recommender.get_all_wigs()
 
-# --- UI với CSS tùy chỉnh ---
+# --- CSS tùy chỉnh ---
+# Thêm vào phần CSS
 custom_css = """
 body {
     background-color: #f8fafc;
@@ -288,7 +289,7 @@ body {
     padding: 20px;
     font-size: 0.9rem;
     opacity: 0.7;
-    color: #0e1b4d; /* Giữ nguyên màu chữ xanh navy đậm */
+    color: #000000; 
     padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
     border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
     border-radius: 5px; /* Bo tròn góc khung */
@@ -343,23 +344,37 @@ body {
 }
 
 /* Cải thiện style cho Gallery */
+.gallery-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f0f9ff;
+    border-radius: 8px;
+    border: 1px solid #a0c8ff;
+}
+
 .gallery-item {
     transition: all 0.3s ease;
     border: 3px solid transparent;
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
+    height: 120px;
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .gallery-item:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
     border-color: #6194c7;
-}
-
-.gallery-item.selected {
-    border-color: #0e1b4d;
-    box-shadow: 0 0 0 3px rgba(14, 27, 77, 0.3);
 }
 
 /* Style cho placeholder text */
@@ -467,6 +482,48 @@ button.primary:hover {
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
 theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
 
+# Tạo class WigSelector riêng để xử lý việc chọn tóc giả
+class WigSelector:
+    def __init__(self):
+        self.selected_wig = None
+    
+    def select_wig_from_gallery(self, evt, gallery):
+        try:
+            # Xử lý click event
+            index = None
+            
+            # Thử các cách khác nhau để lấy index
+            if isinstance(evt, int):
+                index = evt
+            elif hasattr(evt, 'index'):
+                index = evt.index 
+            elif isinstance(evt, dict) and 'index' in evt:
+                index = evt['index']
+            else:
+                try:
+                    index = int(evt)
+                except:
+                    print(f"Debug - Cannot parse index from event: {evt}")
+                    return None
+            
+            # Kiểm tra index và gallery
+            if isinstance(gallery, list) and 0 <= index < len(gallery):
+                self.selected_wig = gallery[index]
+                print(f"Selected wig at index {index}: {self.selected_wig}")
+                return self.selected_wig
+            else:
+                print(f"Invalid index {index} for gallery of length {len(gallery) if isinstance(gallery, list) else 'N/A'}")
+                return None
+        except Exception as e:
+            print(f"Error selecting wig: {str(e)}")
+            return None
+    
+    def get_selected_wig(self):
+        return self.selected_wig
+
+# Khởi tạo WigSelector
+wig_selector = WigSelector()
+
 with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
     # Logo and Header
     try:
@@ -507,28 +564,36 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Đặt image_input là readonly để người dùng không thể upload
                 image_input = gr.Image(type="filepath", height=400, interactive=False, label="Selected Wig")
                 
+                # Thêm một textbox ẩn để lưu đường dẫn tóc giả đã chọn
+                selected_wig_path = gr.Textbox(visible=False)
+                
+                # Nút để áp dụng tóc giả đã chọn vào ô image_input
+                apply_selected_wig = gr.Button("Apply Selected Wig", elem_classes=["show-all-btn"])
+                
                 # Hiển thị hình ảnh tóc giả mẫu với thiết kế cải tiến
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
-                # Ban đầu không hiển thị ảnh nào (truyền list rỗng)
+                
+                # Tối ưu gallery để xử lý nhiều ảnh tốt hơn
                 wig_gallery = gr.Gallery(
                     value=[], 
                     label="Example Wigs", 
-                    height=250,
-                    columns=3,
-                    object_fit="contain",
-                    elem_id="wig_gallery"
+                    height=300,  # Tăng chiều cao
+                    columns=4,   # Tăng số cột 
+                    object_fit="cover",
+                    elem_id="wig_gallery",
+                    elem_classes=["gallery-container"]
                 )
                 wig_gallery_placeholder = gr.Markdown(
                     '<div class="placeholder-text">👆 Analyze your face first to see suitable wigs 👆</div>'
                 )
                 
-                # Nút để làm mới tóc giả (hiển thị tất cả) - style đẹp hơn
+                # Nút để làm mới tóc giả
                 with gr.Row(elem_classes=["control-panel"]):
                     refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["show-all-btn"])
                     
                     # Thêm thông tin hướng dẫn nhỏ
                     gr.Markdown(
-                        '<div style="font-size: 0.9rem; margin-top: 10px; color: #64748b;">👉 Click on a wig to select it</div>'
+                        '<div style="font-size: 0.9rem; margin-top: 10px; color: #64748b;">👉 Click on a wig to select it, then click "Apply Selected Wig"</div>'
                     )
         
         # Hàng thứ hai: Nút Try On Wig
@@ -571,63 +636,17 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             outputs=[wig_gallery_placeholder]
         )
         
-        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
-        def select_wig(evt, gallery):
-            try:
-                # Debug thông tin
-                print(f"Debug - event: {evt}, type: {type(evt)}")
-                print(f"Debug - gallery length: {len(gallery) if isinstance(gallery, list) else 'not a list'}")
-                
-                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
-                if evt is None:
-                    return None
-                
-                # Xử lý các loại event khác nhau
-                try:
-                    # Cố gắng chuyển đổi evt thành số nguyên
-                    index = int(evt)
-                    print(f"Debug - converted index: {index}")
-                except:
-                    # Nếu không thể chuyển đổi trực tiếp, thử các trường hợp khác
-                    if isinstance(evt, int):
-                        index = evt
-                    elif hasattr(evt, 'index'):
-                        index = evt.index
-                    elif isinstance(evt, dict) and 'index' in evt:
-                        index = evt['index']
-                    else:
-                        print(f"Debug - cannot handle event: {evt}")
-                        # Trả về hình ảnh đầu tiên trong gallery nếu không thể xác định index
-                        if isinstance(gallery, list) and len(gallery) > 0:
-                            print(f"Debug - returning first image: {gallery[0]}")
-                            return gallery[0]
-                        return None
-                
-                # Kiểm tra gallery là list và index hợp lệ
-                if isinstance(gallery, list) and 0 <= index < len(gallery):
-                    chosen_wig = gallery[index]
-                    print(f"Debug - chosen wig at index {index}: {chosen_wig}")
-                    return chosen_wig
-                else:
-                    print(f"Debug - invalid index or gallery type: index={index}, gallery_type={type(gallery)}")
-                    # Trả về hình ảnh đầu tiên trong gallery nếu index không hợp lệ
-                    if isinstance(gallery, list) and len(gallery) > 0:
-                        print(f"Debug - returning first image: {gallery[0]}")
-                        return gallery[0]
-                    
-                return None
-            except Exception as e:
-                print(f"Debug - Error in select_wig: {str(e)}")
-                # Trả về hình ảnh đầu tiên trong gallery nếu có lỗi
-                if isinstance(gallery, list) and len(gallery) > 0:
-                    print(f"Debug - returning first image due to error: {gallery[0]}")
-                    return gallery[0]
-                return None
-            
-        # Kết nối sự kiện select cho gallery
+        # Kết nối sự kiện select cho gallery - lưu đường dẫn vào selected_wig_path
         wig_gallery.select(
-            fn=select_wig,
+            fn=wig_selector.select_wig_from_gallery,
             inputs=[wig_gallery],
+            outputs=[selected_wig_path]
+        )
+        
+        # Nút áp dụng tóc giả đã chọn
+        apply_selected_wig.click(
+            fn=lambda path: path if path else None,
+            inputs=[selected_wig_path],
             outputs=[image_input]
         )
         
