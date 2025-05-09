@@ -347,76 +347,54 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
     margin-top: 10px;
-}
-
-.example-item {
-    cursor: pointer;
-    border-radius: 5px;
-    overflow: hidden;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
-}
-
-.example-item:hover {
-    transform: scale(1.05);
-    border-color: #0e1b4d;
-    box-shadow: 0 0 10px rgba(14, 27, 77, 0.3);
-}
-
-.example-item img {
     width: 100%;
-    height: 100px;
-    object-fit: cover;
 }
 
-/* Cải thiện style cho Gallery */
+/* Style cho gallery và các item trong gallery */
+.gradio-gallery {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+.gradio-gallery .thumbnail-image {
+    width: 100% !important;
+    height: 100px !important;
+    object-fit: cover !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: 2px solid transparent !important;
+}
+
+.gradio-gallery .thumbnail-image:hover {
+    transform: scale(1.05) !important;
+    border-color: #003d99 !important;
+    box-shadow: 0 0 10px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Điều chỉnh kích thước hàng và cột trong gallery */
+.wrap.svelte-p3y7hu {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding: 0 !important;
+}
+
+/* Style cho container chứa gallery */
 .gallery-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 8px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 10px;
-    background-color: #f0f9ff;
-    border-radius: 8px;
-    border: 1px solid #a0c8ff;
-    width: 100%;
-}
-
-.gallery-item {
-    transition: all 0.3s ease;
-    border: 3px solid transparent;
-    border-radius: 8px;
-    overflow: hidden;
-    cursor: pointer;
-    height: 110px;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-.gallery-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.gallery-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
-    border-color: #003d99;
-}
-
-/* Style cho placeholder text */
-.placeholder-text {
-    text-align: center;
-    padding: 20px;
-    background-color: #f8fafc;
-    border: 2px dashed #a0c8ff;
-    border-radius: 8px;
-    color: #64748b;
-    font-size: 1.1rem;
-    margin: 15px 0;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+    background-color: #f0f9ff !important;
+    border-radius: 8px !important;
+    border: 1px solid #a0c8ff !important;
+    margin-bottom: 10px !important;
 }
 
 /* Nút đẹp hơn */
