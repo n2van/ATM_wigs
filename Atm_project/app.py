@@ -444,9 +444,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 dest_img = gr.Image(height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt
-                analyze_btn = gr.Button("Analysis and Recommend for You")
-                gr.Markdown("**Kết quả phân tích:**")
-                face_shape_result = gr.Textbox()
+                analyze_btn = gr.Button("Recommend Hairstyles For You")
+                
+                # Ẩn kết quả phân tích nhưng vẫn lưu giữ
+                face_shape_result = gr.Textbox(visible=False)
+                
                 gr.Markdown("**Đề xuất kiểu tóc:**")
                 face_recommendation = gr.Textbox()
             
@@ -486,7 +488,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_output = gr.Image(interactive=False, type="filepath", height=400)
         
         # Connect events
-        # Nút phân tích khuôn mặt
+        # Nút phân tích khuôn mặt - vẫn giữ logic phân tích khuôn mặt nhưng ẩn kết quả
         analyze_btn.click(
             fn=analyze_face_shape,
             inputs=[dest_img],
