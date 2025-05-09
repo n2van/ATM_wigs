@@ -157,19 +157,32 @@ def analyze_face_shape(image):
 
 # Hàm cập nhật hiển thị tóc giả dựa trên kết quả phân tích
 def update_wig_examples(face_shape_result):
-    if face_shape_result and "Hình dạng khuôn mặt:" in face_shape_result:
-        # Trích xuất hình dạng khuôn mặt từ kết quả
-        for shape in face_shapes:
-            if shape in face_shape_result:
-                # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
-                wigs = wig_recommender.get_wigs_for_face_shape(shape)
-                if not wigs:
-                    wigs = wig_recommender.get_all_wigs()
-                return wigs, update_dropdown(wigs)
-    
-    # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
-    all_wigs = wig_recommender.get_all_wigs()
-    return all_wigs, update_dropdown(all_wigs)
+    # Đảm bảo luôn trả về danh sách
+    try:
+        if face_shape_result and "Hình dạng khuôn mặt:" in face_shape_result:
+            # Trích xuất hình dạng khuôn mặt từ kết quả
+            for shape in face_shapes:
+                if shape in face_shape_result:
+                    # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
+                    wigs = wig_recommender.get_wigs_for_face_shape(shape)
+                    if not wigs or not isinstance(wigs, list):
+                        wigs = wig_recommender.get_all_wigs()
+                    if not wigs or not isinstance(wigs, list):
+                        wigs = []
+                    dropdown_update = update_dropdown(wigs)
+                    print(f"Found {len(wigs)} wigs for shape {shape}")
+                    return wigs, dropdown_update
+        
+        # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
+        all_wigs = wig_recommender.get_all_wigs()
+        if not all_wigs or not isinstance(all_wigs, list):
+            all_wigs = []
+        dropdown_update = update_dropdown(all_wigs)
+        print(f"Using all wigs: {len(all_wigs)} found")
+        return all_wigs, dropdown_update
+    except Exception as e:
+        print(f"Error in update_wig_examples: {str(e)}")
+        return [], gr.Dropdown.update(visible=False)
 
 def update_dropdown(gallery_images):
     if gallery_images and isinstance(gallery_images, list) and len(gallery_images) > 0:
@@ -181,6 +194,19 @@ def update_dropdown(gallery_images):
             visible=True
         )
     return gr.Dropdown.update(visible=False)
+
+# Cập nhật refresh wigs button
+def refresh_wigs():
+    try:
+        wigs = wig_recommender.get_all_wigs()
+        if not wigs or not isinstance(wigs, list):
+            print("No wigs found or invalid result from get_all_wigs")
+            wigs = []
+        print(f"Refreshed wigs: {len(wigs)} found")
+        return wigs
+    except Exception as e:
+        print(f"Error in refresh_wigs: {str(e)}")
+        return []
 
 # Hàm xử lý chọn wig đơn giản nhất có thể
 def select_wig_direct(index, gallery):
@@ -668,7 +694,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         
         # Cập nhật refresh wigs button
         refresh_wigs_btn.click(
-            fn=lambda: wig_recommender.get_all_wigs(),
+            fn=refresh_wigs,
             inputs=[],
             outputs=[wig_gallery]
         ).then(
