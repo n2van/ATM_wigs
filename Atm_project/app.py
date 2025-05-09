@@ -456,11 +456,35 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             outputs=[wig_gallery_placeholder]
         )
         
-        # Khi chọn tóc giả từ gallery - dùng event select
+        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
         def select_wig(evt, gallery):
-            if evt and hasattr(evt, 'index') and evt.index < len(gallery):
-                return gallery[evt.index]
-            return None
+            try:
+                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
+                if evt is None:
+                    return None
+                
+                # Trường hợp evt là index trực tiếp (số nguyên)
+                if isinstance(evt, int):
+                    index = evt
+                # Trường hợp evt là đối tượng có thuộc tính index
+                elif hasattr(evt, 'index'):
+                    index = evt.index
+                # Trường hợp evt là dictionary có key 'index'
+                elif isinstance(evt, dict) and 'index' in evt:
+                    index = evt['index']
+                else:
+                    print(f"Debug - event type: {type(evt)}, value: {evt}")
+                    return None
+                
+                # Kiểm tra gallery là list hoặc dict
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    return gallery[index]
+                elif isinstance(gallery, dict) and index in gallery:
+                    return gallery[index]
+                return None
+            except Exception as e:
+                print(f"Debug - Error in select_wig: {str(e)}")
+                return None
             
         wig_gallery.select(
             fn=select_wig,
