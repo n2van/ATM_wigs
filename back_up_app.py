@@ -20,6 +20,8 @@ import torchvision.transforms as T
 
 # Import FaceShapePredictor từ detection.py
 from detection import FaceShapePredictor
+# Import FaceWigRecommender từ face_analyzer.py
+from face_analyzer import FaceWigRecommender
 
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
 
@@ -50,53 +52,13 @@ for shape in face_shapes:
         os.makedirs(face_shape_folder)
         print(f"Đã tạo thư mục '{face_shape_folder}' cho kiểu khuôn mặt {shape}.")
 
-# Hàm tải các hình ảnh tóc giả mẫu
+# Hàm tải các hình ảnh tóc giả mẫu - có thể bỏ và dùng wig_recommender.get_all_wigs()
 def load_example_wigs():
-    example_wigs = []
-    wig_folder = "./example_wigs"  # Thư mục chứa các mẫu tóc giả
-    
-    if os.path.exists(wig_folder):
-        # Tìm kiếm file trong thư mục gốc
-        for file in os.listdir(wig_folder):
-            file_path = os.path.join(wig_folder, file)
-            if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                example_wigs.append(file_path)
-        
-        # Tìm kiếm trong các thư mục con của hình dạng khuôn mặt
-        for shape in face_shapes:
-            shape_folder = os.path.join(wig_folder, shape)
-            if os.path.exists(shape_folder):
-                for file in os.listdir(shape_folder):
-                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        shape_wig_path = os.path.join(shape_folder, file)
-                        if shape_wig_path not in example_wigs:
-                            example_wigs.append(shape_wig_path)
-    
-    # Nếu không tìm thấy file nào, trả về danh sách trống
-    return example_wigs
+    return wig_recommender.get_all_wigs()
 
-# Hàm tải hình ảnh tóc giả theo hình dạng khuôn mặt
+# Hàm tải hình ảnh tóc giả theo hình dạng khuôn mặt - có thể bỏ và dùng wig_recommender.get_wigs_for_face_shape()
 def load_wigs_for_face_shape(face_shape):
-    face_shape_wig_folder = f"./example_wigs/{face_shape}"
-    wigs = []
-    
-    # Kiểm tra xem có thư mục tóc giả cho hình dạng khuôn mặt này không
-    if os.path.exists(face_shape_wig_folder):
-        for file in os.listdir(face_shape_wig_folder):
-            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                wigs.append(os.path.join(face_shape_wig_folder, file))
-    
-    # Nếu không có tóc giả trong thư mục hình dạng mặt, 
-    # trả về tất cả các file trong thư mục gốc
-    if not wigs:
-        wig_folder = "./example_wigs"
-        if os.path.exists(wig_folder):
-            for file in os.listdir(wig_folder):
-                file_path = os.path.join(wig_folder, file)
-                if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    wigs.append(file_path)
-    
-    return wigs
+    return wig_recommender.get_wigs_for_face_shape(face_shape)
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
@@ -117,6 +79,8 @@ num_faces = args.max_num_faces  # This will now be 1
 
 # Khởi tạo bộ nhận dạng hình dạng khuôn mặt
 face_predictor = FaceShapePredictor(args.face_model)
+# Khởi tạo bộ đề xuất tóc giả
+wig_recommender = FaceWigRecommender(face_predictor)
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -186,57 +150,72 @@ def distribute_faces(filepath):
     faces = extract_faces_auto(filepath, refacer, max_faces=1)
     return faces[0]
 
-# Hàm phân tích hình dạng khuôn mặt và đề xuất kiểu tóc
+# Hàm phân tích khuôn mặt - có thể bỏ vì đã có hàm tương tự trong FaceWigRecommender
 def analyze_face_shape(image):
-    if image is None:
-        return "Vui lòng tải lên ảnh khuôn mặt để nhận diện", None
+    face_shape, result_text = wig_recommender.analyze_face_shape(image)
+    return result_text
+
+# Hàm cập nhật hiển thị tóc giả dựa trên kết quả phân tích
+def update_wig_examples(face_shape_result):
+    if face_shape_result and "Hình dạng khuôn mặt:" in face_shape_result:
+        # Trích xuất hình dạng khuôn mặt từ kết quả
+        for shape in face_shapes:
+            if shape in face_shape_result:
+                # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
+                wigs = wig_recommender.get_wigs_for_face_shape(shape)
+                return wigs
     
-    # Lưu ảnh tạm thời nếu là một mảng numpy từ Gradio
-    if isinstance(image, np.ndarray):
-        temp_file = tempfile.NamedTemporaryFile(delete=False, dir="./tmp", suffix=".png")
-        Image.fromarray(image).save(temp_file.name)
-        image_path = temp_file.name
-    else:
-        # Nếu là đường dẫn file
-        image_path = image
-    
-    # Sử dụng phương thức predict từ detection.py
-    if isinstance(image, Image.Image):
-        result = face_predictor.predict(image=image)
-    else:
-        result = face_predictor.predict(image_path=image_path)
-    
-    # Xóa file tạm nếu đã tạo
-    if isinstance(image, np.ndarray) and os.path.exists(image_path):
-        try:
-            os.remove(image_path)
-        except:
-            pass
-    
-    if result:
-        face_shape = result["predicted_class"]
-        confidence = result["confidence"]
-        
-        # Đề xuất kiểu tóc dựa trên hình dạng khuôn mặt
-        recommendations = {
-            "Heart": "Kiểu tóc thẳng dài, lob hoặc bob, tóc xoăn nhẹ với mái dài.",
-            "Oblong": "Tóc xoăn lớn, tóc bob, hoặc kiểu tóc có nhiều lớp với mái ngang.",
-            "Oval": "Hầu hết các kiểu tóc đều phù hợp. Thử tóc dài, bob, pixie, hoặc updos.",
-            "Round": "Kiểu tóc dài, thẳng với mái dài chéo, tóc xếp tầng dài đến vai.",
-            "Square": "Tóc xoăn mềm, tóc xếp tầng, tóc pixie với mái dài hoặc tóc bob dài."
-        }
-        
-        recommendation = recommendations.get(face_shape, "Không có đề xuất cụ thể.")
-        
-        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})", recommendation
-    else:
-        return "Không thể phân tích hình dạng khuôn mặt", None
+    # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
+    all_wigs = wig_recommender.get_all_wigs()
+    return all_wigs
+
+def update_dropdown(gallery_images):
+    if gallery_images and isinstance(gallery_images, list) and len(gallery_images) > 0:
+        # Tạo danh sách các tùy chọn: (label: "Wig #N", value: đường dẫn)
+        choices = [{"label": f"Wig #{i+1}", "value": i} for i in range(len(gallery_images))]
+        return gr.Dropdown.update(
+            choices=choices,
+            value=None,
+            visible=True
+        )
+    return gr.Dropdown.update(visible=False)
+
+# Cập nhật refresh wigs button
+def refresh_wigs():
+    try:
+        wigs = wig_recommender.get_all_wigs()
+        if not wigs or not isinstance(wigs, list):
+            print("No wigs found or invalid result from get_all_wigs")
+            wigs = []
+        print(f"Refreshed wigs: {len(wigs)} found")
+        return wigs
+    except Exception as e:
+        print(f"Error in refresh_wigs: {str(e)}")
+        return []
+
+# Hàm xử lý chọn wig đơn giản nhất có thể
+def select_wig_direct(index, gallery):
+    if gallery and isinstance(gallery, list) and index < len(gallery):
+        selected = gallery[index]
+        print(f"Selected wig directly at index {index}: {selected}")
+        return selected
+    return None
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
     return example_path
 
-# --- UI với CSS tùy chỉnh ---
+# Hàm phân tích khuôn mặt và hiển thị các tóc giả phù hợp
+def analyze_and_recommend(image):
+    face_shape, result_text = wig_recommender.analyze_face_shape(image)
+    if face_shape:
+        # Lấy danh sách tóc giả phù hợp
+        wigs = wig_recommender.get_wigs_for_face_shape(face_shape)
+        return wigs if wigs else []
+    return wig_recommender.get_all_wigs()
+
+# --- CSS tùy chỉnh ---
+# Thêm vào phần CSS
 custom_css = """
 body {
     background-color: #f8fafc;
@@ -334,10 +313,13 @@ body {
     text-align: center;
     margin-top: 40px;
     padding: 20px;
-    border-top: 1px solid #e2e8f0;
     font-size: 0.9rem;
-    color: #1e293b;
     opacity: 0.7;
+    color: #000000 !important; /* Đảm bảo màu chữ đen */
+    padding: 5px 10px; 
+    border: 2px solid #a0c8ff;
+    border-radius: 5px;
+    background-color: #e6f0ff;
 }
 
 .face-analysis {
@@ -364,56 +346,231 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
     margin-top: 10px;
-}
-
-.example-item {
-    cursor: pointer;
-    border-radius: 5px;
-    overflow: hidden;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
-}
-
-.example-item:hover {
-    transform: scale(1.05);
-    border-color: #0e1b4d;
-    box-shadow: 0 0 10px rgba(14, 27, 77, 0.3);
-}
-
-.example-item img {
     width: 100%;
-    height: 100px;
-    object-fit: cover;
 }
 
-.example-item-btn {
-    width: 100%;
-    padding: 4px 8px !important;
-    margin-top: 5px !important;
-    font-size: 0.8rem !important;
-    text-align: center;
-    background-color: #0e1b4d !important;
-    color: white !important;
-    border-radius: 4px;
-    cursor: pointer;
+/* Style cho gallery và các item trong gallery */
+.gradio-gallery {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
+    gap: 10px !important;
+    width: 100% !important;
+    overflow: hidden !important;
 }
 
-.example-item-btn:hover {
-    background-color: #1a2e6c !important;
+.gradio-gallery .thumbnail-image {
+    width: 100% !important;
+    height: 120px !important; /* Tăng chiều cao một chút để tỉ lệ đẹp hơn */
+    object-fit: cover !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: 2px solid transparent !important;
 }
 
-/* Thêm màu sắc navy cho các nút */
+.gradio-gallery .thumbnail-image:hover {
+    transform: scale(1.05) !important;
+    border-color: #003d99 !important;
+    box-shadow: 0 0 10px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Điều chỉnh kích thước hàng và cột trong gallery */
+.wrap.svelte-p3y7hu {
+    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
+    gap: 10px !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding: 0 !important;
+}
+
+/* Style cho container chứa gallery */
+.gallery-container {
+    width: 100% !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+    background-color: #f0f9ff !important;
+    border-radius: 8px !important;
+    border: 1px solid #a0c8ff !important;
+    margin-bottom: 10px !important;
+}
+
+/* Nút đẹp hơn */
 button.primary {
-    background-color: #0e1b4d !important;
+    background-color: #003d99 !important; /* Màu xanh dương đậm hơn */
+    transition: all 0.3s ease !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    color: white !important; /* Đảm bảo chữ màu trắng */
 }
 
 button.primary:hover {
-    background-color: #1a2e6c !important;
+    background-color: #0052cc !important; 
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Nút Analyze Face Shape */
+.analyze-btn {
+    background-color: #003d99 !important;
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important; /* Nhỏ hơn một chút */
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    font-size: 0.9rem !important; /* Font nhỏ hơn */
+}
+
+.analyze-btn:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Nút Show All Wigs */
+.show-all-btn {
+    background-color: #003d99 !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.show-all-btn:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Đảm bảo nút Try On Wig nổi bật */
+.try-on-button {
+    background-color: #003d99 !important;
+    color: white !important;
+    font-size: 1.1rem !important;
+    padding: 10px 20px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    width: 80% !important;
+    max-width: 300px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.try-on-button:hover {
+    background-color: #0052cc !important;
+    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
+}
+
+/* Custom scroll bar cho gallery */
+.gallery-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.gallery-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.gallery-container::-webkit-scrollbar-thumb {
+    background: #a0c8ff;
+    border-radius: 10px;
+}
+
+.gallery-container::-webkit-scrollbar-thumb:hover {
+    background: #6194c7;
+}
+
+/* Hãy đặt css riêng cho gallery */
+.wig-gallery-container {
+    width: 100%;
+    height: 320px;
+    overflow-y: auto;
+    background-color: #f0f9ff;
+    border-radius: 8px;
+    border: 1px solid #a0c8ff;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+
+/* Style đồng nhất cho tất cả các hình ảnh */
+.image-container img,
+.gradio-image img,
+.original-image img,
+.wig-image img,
+.result-image img {
+    height: 450px !important; /* Chiều cao cố định */
+    width: 100% !important;
+    object-fit: contain !important; /* Giữ nguyên tỉ lệ ảnh */
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Style cho container chứa hình ảnh */
+.image-display-container {
+    height: 480px !important; /* Thêm khoảng trống cho label */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100%;
 }
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
 theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
+
+# Đơn giản hóa WigSelector để áp dụng trực tiếp
+class WigSelector:
+    def __init__(self):
+        self.selected_wig = None
+    
+    def select_wig_from_gallery(self, evt, gallery):
+        """Hàm này vừa chọn wig vừa trả về đường dẫn để hiển thị luôn"""
+        try:
+            # Xử lý click event
+            index = None
+            
+            # Thử các cách khác nhau để lấy index
+            if isinstance(evt, int):
+                index = evt
+            elif hasattr(evt, 'index'):
+                index = evt.index 
+            elif isinstance(evt, dict) and 'index' in evt:
+                index = evt['index']
+            else:
+                try:
+                    index = int(evt)
+                except:
+                    print(f"Debug - Cannot parse index from event: {evt}")
+                    return None
+            
+            # Kiểm tra index và gallery
+            if isinstance(gallery, list) and 0 <= index < len(gallery):
+                self.selected_wig = gallery[index]
+                print(f"Selected and applied wig at index {index}: {self.selected_wig}")
+                return self.selected_wig
+            elif isinstance(gallery, list) and len(gallery) > 0:
+                # Nếu không tìm thấy index, trả về ảnh đầu tiên
+                self.selected_wig = gallery[0]
+                print(f"Fallback: Applied first wig: {self.selected_wig}")
+                return self.selected_wig
+            else:
+                print(f"Invalid gallery: {type(gallery)}")
+                return None
+        except Exception as e:
+            print(f"Error selecting wig: {str(e)}")
+            return None
+
+# Khởi tạo WigSelector
+wig_selector = WigSelector()
 
 with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
     # Logo and Header
@@ -441,56 +598,112 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(height=400)  
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
                 
-                # Thêm phân tích hình dạng khuôn mặt
-                analyze_btn = gr.Button("Analysis and Recommend for You")
-                gr.Markdown("**Kết quả phân tích:**")
-                face_shape_result = gr.Textbox()
-                gr.Markdown("**Đề xuất kiểu tóc:**")
-                face_recommendation = gr.Textbox()
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+                
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
+                face_shape_result = gr.Textbox(visible=False)
             
             # Input Column - Wigs
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(type="filepath", height=400)
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
                 
                 # Hiển thị hình ảnh tóc giả mẫu
-                example_wigs = load_example_wigs()
-                if example_wigs:
-                    gr.Markdown('<div class="section-title">Example Wigs</div>')
-                    with gr.Row():
-                        for wig in example_wigs:
-                            # Tạo container để chứa cả nút và hình ảnh
-                            with gr.Column(scale=1):
-                                # Sử dụng Image component thay vì HTML
-                                gr.Image(value=wig, height=100)
-                                # Tạo nút để xử lý sự kiện click, sử dụng text thay vì label
-                                wig_btn = gr.Button("Select")
-                                # Khi nhấp vào nút, load hình ảnh đó vào ô select wig
-                                wig_btn.click(
-                                    fn=lambda wig_path=wig: wig_path,
-                                    inputs=[],
-                                    outputs=[image_input]
-                                )
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,
+                    elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
+                
+                # Nút để làm mới tóc giả (hiển thị tất cả)
+                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
-            image_btn = gr.Button("Try On Wig")
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ ba: Result
         with gr.Row():
             # Output Column - Ở giữa để cân bằng giao diện
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(interactive=False, type="filepath", height=400)
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
         # Connect events
-        # Nút phân tích khuôn mặt
+        # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
-            fn=analyze_face_shape,
+            fn=wig_recommender.analyze_face_shape,
             inputs=[dest_img],
-            outputs=[face_shape_result, face_recommendation]
+            outputs=[face_shape_result]
+        ).then(
+            fn=update_wig_examples,
+            inputs=[face_shape_result],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Nút làm mới tóc giả (hiển thị tất cả)
+        refresh_wigs_btn.click(
+            fn=lambda: wig_recommender.get_all_wigs(),
+            inputs=[],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
+        def select_wig(evt, gallery):
+            try:
+                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
+                if evt is None:
+                    return None
+                
+                # Trường hợp evt là index trực tiếp (số nguyên)
+                if isinstance(evt, int):
+                    index = evt
+                # Trường hợp evt là đối tượng có thuộc tính index
+                elif hasattr(evt, 'index'):
+                    index = evt.index
+                # Trường hợp evt là dictionary có key 'index'
+                elif isinstance(evt, dict) and 'index' in evt:
+                    index = evt['index']
+                else:
+                    print(f"Debug - event type: {type(evt)}, value: {evt}")
+                    return None
+                
+                # Kiểm tra gallery là list hoặc dict
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    return gallery[index]
+                elif isinstance(gallery, dict) and index in gallery:
+                    return gallery[index]
+                return None
+            except Exception as e:
+                print(f"Debug - Error in select_wig: {str(e)}")
+                return None
+            
+        wig_gallery.select(
+            fn=select_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
         )
         
         # Try on wig
