@@ -386,6 +386,22 @@ body {
     object-fit: cover;
 }
 
+.example-item-btn {
+    width: 100%;
+    padding: 4px 8px !important;
+    margin-top: 5px !important;
+    font-size: 0.8rem !important;
+    text-align: center;
+    background-color: #0e1b4d !important;
+    color: white !important;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.example-item-btn:hover {
+    background-color: #1a2e6c !important;
+}
+
 /* Thêm màu sắc navy cho các nút */
 button.primary {
     background-color: #0e1b4d !important;
@@ -443,22 +459,22 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                     gr.Markdown('<div class="section-title">Example Wigs</div>')
                     with gr.Row(elem_classes="example-gallery"):
                         for wig in example_wigs:
-                            wig_btn = gr.Button(
-                                "",
-                                elem_classes="example-item"
-                            )
-                            wig_btn.style(
-                                full_width=False,
-                                size="sm",
-                                image=wig
-                            )
-                            # Khi nhấp vào một hình ảnh mẫu, load hình ảnh đó vào ô select wig
-                            wig_btn.click(
-                                fn=load_wig_example,
-                                inputs=[],
-                                outputs=[image_input],
-                                _js=f"() => '{wig}'"
-                            )
+                            # Tạo container để chứa cả nút và hình ảnh
+                            with gr.Column(elem_id=f"wig-container-{os.path.basename(wig)}", scale=1):
+                                # Sử dụng Image component thay vì HTML
+                                gr.Image(value=wig, show_label=False, height=100)
+                                # Tạo nút để xử lý sự kiện click
+                                wig_btn = gr.Button(
+                                    label="Select",
+                                    elem_classes="example-item-btn",
+                                    size="sm"
+                                )
+                                # Khi nhấp vào nút, load hình ảnh đó vào ô select wig
+                                wig_btn.click(
+                                    fn=lambda wig_path=wig: wig_path,
+                                    inputs=[],
+                                    outputs=[image_input]
+                                )
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row(elem_classes="control-panel"):
