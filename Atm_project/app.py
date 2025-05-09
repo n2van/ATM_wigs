@@ -587,14 +587,18 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
-                # Tải tất cả các tóc giả mẫu mặc định khi mới mở ứng dụng
-                default_wigs = wig_recommender.get_all_wigs()
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
                 wig_gallery = gr.Gallery(
-                    value=default_wigs, 
+                    value=[], 
                     label="Example Wigs", 
                     height=200,
-                    columns=5,  # Hiển thị chính xác 5 ảnh trên một hàng
+                    columns=5,
                     elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
                 )
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
@@ -621,6 +625,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             fn=update_wig_examples,
             inputs=[face_shape_result],
             outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
         )
         
         # Nút làm mới tóc giả (hiển thị tất cả)
@@ -628,6 +637,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             fn=lambda: wig_recommender.get_all_wigs(),
             inputs=[],
             outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
         )
         
         # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
