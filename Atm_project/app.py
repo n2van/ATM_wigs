@@ -189,7 +189,7 @@ def distribute_faces(filepath):
 # Hàm phân tích hình dạng khuôn mặt và đề xuất kiểu tóc
 def analyze_face_shape(image):
     if image is None:
-        return "Vui lòng tải lên ảnh khuôn mặt để nhận diện", None
+        return "Vui lòng tải lên ảnh khuôn mặt để nhận diện"
     
     # Lưu ảnh tạm thời nếu là một mảng numpy từ Gradio
     if isinstance(image, np.ndarray):
@@ -217,20 +217,9 @@ def analyze_face_shape(image):
         face_shape = result["predicted_class"]
         confidence = result["confidence"]
         
-        # Đề xuất kiểu tóc dựa trên hình dạng khuôn mặt
-        recommendations = {
-            "Heart": "Kiểu tóc thẳng dài, lob hoặc bob, tóc xoăn nhẹ với mái dài.",
-            "Oblong": "Tóc xoăn lớn, tóc bob, hoặc kiểu tóc có nhiều lớp với mái ngang.",
-            "Oval": "Hầu hết các kiểu tóc đều phù hợp. Thử tóc dài, bob, pixie, hoặc updos.",
-            "Round": "Kiểu tóc dài, thẳng với mái dài chéo, tóc xếp tầng dài đến vai.",
-            "Square": "Tóc xoăn mềm, tóc xếp tầng, tóc pixie với mái dài hoặc tóc bob dài."
-        }
-        
-        recommendation = recommendations.get(face_shape, "Không có đề xuất cụ thể.")
-        
-        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})", recommendation
+        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})"
     else:
-        return "Không thể phân tích hình dạng khuôn mặt", None
+        return "Không thể phân tích hình dạng khuôn mặt"
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
@@ -443,14 +432,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Original Face</div>')
                 dest_img = gr.Image(height=400)  
                 
-                # Thêm phân tích hình dạng khuôn mặt
-                analyze_btn = gr.Button("Recommend Hairstyles For You")
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape")
                 
-                # Ẩn kết quả phân tích nhưng vẫn lưu giữ
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
                 face_shape_result = gr.Textbox(visible=False)
-                
-                gr.Markdown("**Đề xuất kiểu tóc:**")
-                face_recommendation = gr.Textbox()
             
             # Input Column - Wigs
             with gr.Column(scale=1):
@@ -488,11 +474,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 image_output = gr.Image(interactive=False, type="filepath", height=400)
         
         # Connect events
-        # Nút phân tích khuôn mặt - vẫn giữ logic phân tích khuôn mặt nhưng ẩn kết quả
+        # Nút phân tích khuôn mặt - vẫn giữ logic phân tích nhưng ẩn kết quả
         analyze_btn.click(
             fn=analyze_face_shape,
             inputs=[dest_img],
-            outputs=[face_shape_result, face_recommendation]
+            outputs=face_shape_result
         )
         
         # Try on wig
