@@ -42,15 +42,35 @@ if not os.path.exists("./example_wigs"):
     os.makedirs("./example_wigs")
     print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
 
+# Tạo các thư mục con cho từng kiểu khuôn mặt
+face_shapes = ["Heart", "Oblong", "Oval", "Round", "Square"]
+for shape in face_shapes:
+    face_shape_folder = f"./example_wigs/{shape}"
+    if not os.path.exists(face_shape_folder):
+        os.makedirs(face_shape_folder)
+        print(f"Đã tạo thư mục '{face_shape_folder}' cho kiểu khuôn mặt {shape}.")
+
 # Hàm tải các hình ảnh tóc giả mẫu
 def load_example_wigs():
     example_wigs = []
     wig_folder = "./example_wigs"  # Thư mục chứa các mẫu tóc giả
     
     if os.path.exists(wig_folder):
+        # Tìm kiếm file trong thư mục gốc
         for file in os.listdir(wig_folder):
-            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                example_wigs.append(os.path.join(wig_folder, file))
+            file_path = os.path.join(wig_folder, file)
+            if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                example_wigs.append(file_path)
+        
+        # Tìm kiếm trong các thư mục con của hình dạng khuôn mặt
+        for shape in face_shapes:
+            shape_folder = os.path.join(wig_folder, shape)
+            if os.path.exists(shape_folder):
+                for file in os.listdir(shape_folder):
+                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        shape_wig_path = os.path.join(shape_folder, file)
+                        if shape_wig_path not in example_wigs:
+                            example_wigs.append(shape_wig_path)
     
     # Nếu không tìm thấy file nào, trả về danh sách trống
     return example_wigs
@@ -66,9 +86,15 @@ def load_wigs_for_face_shape(face_shape):
             if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                 wigs.append(os.path.join(face_shape_wig_folder, file))
     
-    # Nếu không có, sử dụng tất cả các tóc giả
+    # Nếu không có tóc giả trong thư mục hình dạng mặt, 
+    # trả về tất cả các file trong thư mục gốc
     if not wigs:
-        wigs = load_example_wigs()
+        wig_folder = "./example_wigs"
+        if os.path.exists(wig_folder):
+            for file in os.listdir(wig_folder):
+                file_path = os.path.join(wig_folder, file)
+                if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    wigs.append(file_path)
     
     return wigs
 
@@ -360,6 +386,22 @@ body {
     object-fit: cover;
 }
 
+.example-item-btn {
+    width: 100%;
+    padding: 4px 8px !important;
+    margin-top: 5px !important;
+    font-size: 0.8rem !important;
+    text-align: center;
+    background-color: #0e1b4d !important;
+    color: white !important;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.example-item-btn:hover {
+    background-color: #1a2e6c !important;
+}
+
 /* Thêm màu sắc navy cho các nút */
 button.primary {
     background-color: #0e1b4d !important;
@@ -397,17 +439,17 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         # Hàng đầu tiên: Original Face và Select Wigs
         with gr.Row():
             # Input Column - Face
-            with gr.Column(scale=1, elem_classes="face-container"):
+            with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Original Face</div>')
                 dest_img = gr.Image(label="Input Face", height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt
-                analyze_btn = gr.Button("Analysis and Recommend for You", variant="primary")
-                face_shape_result = gr.Textbox(label="Kết quả phân tích", elem_classes="face-analysis")
-                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc", elem_classes="face-recommendation")
+                analyze_btn = gr.Button("Analysis and Recommend for You")
+                face_shape_result = gr.Textbox(label="Kết quả phân tích")
+                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc")
             
             # Input Column - Wigs
-            with gr.Column(scale=1, elem_classes="input-panel"):
+            with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
                 
@@ -415,33 +457,31 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 example_wigs = load_example_wigs()
                 if example_wigs:
                     gr.Markdown('<div class="section-title">Example Wigs</div>')
-                    with gr.Row(elem_classes="example-gallery"):
+                    with gr.Row():
                         for wig in example_wigs:
-                            wig_btn = gr.Button(
-                                "",
-                                elem_classes="example-item"
-                            )
-                            wig_btn.style(
-                                full_width=False,
-                                size="sm",
-                                image=wig
-                            )
-                            # Khi nhấp vào một hình ảnh mẫu, load hình ảnh đó vào ô select wig
-                            wig_btn.click(
-                                fn=load_wig_example,
-                                inputs=[],
-                                outputs=[image_input],
-                                _js=f"() => '{wig}'"
-                            )
+                            # Tạo container để chứa cả nút và hình ảnh
+                            with gr.Column(scale=1):
+                                # Sử dụng Image component thay vì HTML
+                                gr.Image(value=wig, label="", height=100)
+                                # Tạo nút để xử lý sự kiện click, sử dụng text thay vì label
+                                wig_btn = gr.Button(
+                                    text="Select"
+                                )
+                                # Khi nhấp vào nút, load hình ảnh đó vào ô select wig
+                                wig_btn.click(
+                                    fn=lambda wig_path=wig: wig_path,
+                                    inputs=[],
+                                    outputs=[image_input]
+                                )
         
         # Hàng thứ hai: Nút Try On Wig
-        with gr.Row(elem_classes="control-panel"):
-            image_btn = gr.Button("Try On Wig", variant="primary", size="lg")
+        with gr.Row():
+            image_btn = gr.Button("Try On Wig")
         
         # Hàng thứ ba: Result
         with gr.Row():
             # Output Column - Ở giữa để cân bằng giao diện
-            with gr.Column(scale=1, elem_classes="output-panel"):
+            with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
         
