@@ -346,14 +346,15 @@ body {
 /* Cải thiện style cho Gallery */
 .gallery-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
     max-height: 400px;
     overflow-y: auto;
     padding: 10px;
     background-color: #f0f9ff;
     border-radius: 8px;
     border: 1px solid #a0c8ff;
+    width: 100%;
 }
 
 .gallery-item {
@@ -362,7 +363,10 @@ body {
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    height: 120px;
+    height: 110px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 .gallery-item img {
@@ -372,9 +376,9 @@ body {
 }
 
 .gallery-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-    border-color: #6194c7;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+    border-color: #003d99;
 }
 
 /* Style cho placeholder text */
@@ -482,12 +486,13 @@ button.primary:hover {
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
 theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
 
-# Tạo class WigSelector riêng để xử lý việc chọn tóc giả
+# Đơn giản hóa WigSelector để áp dụng trực tiếp
 class WigSelector:
     def __init__(self):
         self.selected_wig = None
     
     def select_wig_from_gallery(self, evt, gallery):
+        """Hàm này vừa chọn wig vừa trả về đường dẫn để hiển thị luôn"""
         try:
             # Xử lý click event
             index = None
@@ -509,17 +514,19 @@ class WigSelector:
             # Kiểm tra index và gallery
             if isinstance(gallery, list) and 0 <= index < len(gallery):
                 self.selected_wig = gallery[index]
-                print(f"Selected wig at index {index}: {self.selected_wig}")
+                print(f"Selected and applied wig at index {index}: {self.selected_wig}")
+                return self.selected_wig
+            elif isinstance(gallery, list) and len(gallery) > 0:
+                # Nếu không tìm thấy index, trả về ảnh đầu tiên
+                self.selected_wig = gallery[0]
+                print(f"Fallback: Applied first wig: {self.selected_wig}")
                 return self.selected_wig
             else:
-                print(f"Invalid index {index} for gallery of length {len(gallery) if isinstance(gallery, list) else 'N/A'}")
+                print(f"Invalid gallery: {type(gallery)}")
                 return None
         except Exception as e:
             print(f"Error selecting wig: {str(e)}")
             return None
-    
-    def get_selected_wig(self):
-        return self.selected_wig
 
 # Khởi tạo WigSelector
 wig_selector = WigSelector()
@@ -564,24 +571,19 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Đặt image_input là readonly để người dùng không thể upload
                 image_input = gr.Image(type="filepath", height=400, interactive=False, label="Selected Wig")
                 
-                # Thêm một textbox ẩn để lưu đường dẫn tóc giả đã chọn
-                selected_wig_path = gr.Textbox(visible=False)
-                
-                # Nút để áp dụng tóc giả đã chọn vào ô image_input
-                apply_selected_wig = gr.Button("Apply Selected Wig", elem_classes=["show-all-btn"])
-                
                 # Hiển thị hình ảnh tóc giả mẫu với thiết kế cải tiến
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 
-                # Tối ưu gallery để xử lý nhiều ảnh tốt hơn
+                # Tối ưu gallery để lấp đầy container
                 wig_gallery = gr.Gallery(
                     value=[], 
                     label="Example Wigs", 
-                    height=300,  # Tăng chiều cao
-                    columns=4,   # Tăng số cột 
+                    height=300,
+                    columns=5,   # Tăng số cột để lấp đầy
                     object_fit="cover",
                     elem_id="wig_gallery",
-                    elem_classes=["gallery-container"]
+                    elem_classes=["gallery-container"],
+                    allow_preview=False  # Tắt chế độ xem trước để tránh lỗi
                 )
                 wig_gallery_placeholder = gr.Markdown(
                     '<div class="placeholder-text">👆 Analyze your face first to see suitable wigs 👆</div>'
@@ -591,9 +593,9 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 with gr.Row(elem_classes=["control-panel"]):
                     refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["show-all-btn"])
                     
-                    # Thêm thông tin hướng dẫn nhỏ
+                    # Cập nhật thông tin hướng dẫn
                     gr.Markdown(
-                        '<div style="font-size: 0.9rem; margin-top: 10px; color: #64748b;">👉 Click on a wig to select it, then click "Apply Selected Wig"</div>'
+                        '<div style="font-size: 0.9rem; margin-top: 10px; color: #64748b;">👉 Click on a wig to try it</div>'
                     )
         
         # Hàng thứ hai: Nút Try On Wig
@@ -636,17 +638,10 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             outputs=[wig_gallery_placeholder]
         )
         
-        # Kết nối sự kiện select cho gallery - lưu đường dẫn vào selected_wig_path
+        # Kết nối sự kiện select cho gallery - apply trực tiếp
         wig_gallery.select(
             fn=wig_selector.select_wig_from_gallery,
             inputs=[wig_gallery],
-            outputs=[selected_wig_path]
-        )
-        
-        # Nút áp dụng tóc giả đã chọn
-        apply_selected_wig.click(
-            fn=lambda path: path if path else None,
-            inputs=[selected_wig_path],
             outputs=[image_input]
         )
         
