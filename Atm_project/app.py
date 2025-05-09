@@ -372,16 +372,45 @@ body {
 
 /* Nút đẹp hơn */
 button.primary {
-    background-color: #0e1b4d !important;
+    background-color: #0052cc !important; /* Màu xanh dương đậm */
     transition: all 0.3s ease !important;
     font-weight: 600 !important;
     letter-spacing: 0.5px !important;
+    color: white !important; /* Đảm bảo chữ màu trắng */
 }
 
 button.primary:hover {
-    background-color: #1a2e6c !important;
+    background-color: #0066ff !important; /* Màu xanh dương sáng hơn khi hover */
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(14, 27, 77, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3) !important;
+}
+
+/* Style chung cho tất cả các nút */
+button {
+    background-color: #0052cc !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+button:hover {
+    background-color: #0066ff !important;
+    box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3) !important;
+}
+
+/* Đảm bảo nút Try On Wig nổi bật */
+.try-on-button {
+    background-color: #0052cc !important;
+    color: white !important;
+    font-size: 1.1rem !important;
+    padding: 10px 20px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    width: 80% !important;
+    max-width: 300px !important;
 }
 
 /* Custom scroll bar cho gallery */
@@ -437,7 +466,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 dest_img = gr.Image(height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
-                analyze_btn = gr.Button("Analyze Face Shape")
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["primary"])
                 
                 # Ẩn kết quả phân tích (để sử dụng trong backend)
                 face_shape_result = gr.Textbox(visible=False)
@@ -474,7 +503,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
-            image_btn = gr.Button("Try On Wig")
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ ba: Result
         with gr.Row():
