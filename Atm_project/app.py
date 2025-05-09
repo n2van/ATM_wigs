@@ -563,71 +563,57 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             try:
                 # Debug thông tin
                 print(f"Debug - event: {evt}, type: {type(evt)}")
-                print(f"Debug - gallery: {gallery}, type: {type(gallery)}")
+                print(f"Debug - gallery length: {len(gallery) if isinstance(gallery, list) else 'not a list'}")
                 
                 # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
                 if evt is None:
                     return None
                 
-                index = None
-                # Trường hợp evt là index trực tiếp (số nguyên)
-                if isinstance(evt, int):
-                    index = evt
-                # Trường hợp evt là đối tượng có thuộc tính index
-                elif hasattr(evt, 'index'):
-                    index = evt.index
-                # Trường hợp evt là dictionary có key 'index'
-                elif isinstance(evt, dict) and 'index' in evt:
-                    index = evt['index']
-                else:
-                    # Cố gắng chuyển đổi thành số nguyên
-                    try:
-                        index = int(evt)
-                    except:
-                        print(f"Debug - cannot convert event to index: {evt}")
+                # Xử lý các loại event khác nhau
+                try:
+                    # Cố gắng chuyển đổi evt thành số nguyên
+                    index = int(evt)
+                    print(f"Debug - converted index: {index}")
+                except:
+                    # Nếu không thể chuyển đổi trực tiếp, thử các trường hợp khác
+                    if isinstance(evt, int):
+                        index = evt
+                    elif hasattr(evt, 'index'):
+                        index = evt.index
+                    elif isinstance(evt, dict) and 'index' in evt:
+                        index = evt['index']
+                    else:
+                        print(f"Debug - cannot handle event: {evt}")
+                        # Trả về hình ảnh đầu tiên trong gallery nếu không thể xác định index
+                        if isinstance(gallery, list) and len(gallery) > 0:
+                            print(f"Debug - returning first image: {gallery[0]}")
+                            return gallery[0]
                         return None
                 
-                print(f"Debug - index: {index}")
-                
-                # Kiểm tra gallery là list hoặc dict
+                # Kiểm tra gallery là list và index hợp lệ
                 if isinstance(gallery, list) and 0 <= index < len(gallery):
                     chosen_wig = gallery[index]
-                    print(f"Debug - chosen wig: {chosen_wig}")
+                    print(f"Debug - chosen wig at index {index}: {chosen_wig}")
                     return chosen_wig
-                elif isinstance(gallery, dict) and index in gallery:
-                    return gallery[index]
                 else:
                     print(f"Debug - invalid index or gallery type: index={index}, gallery_type={type(gallery)}")
+                    # Trả về hình ảnh đầu tiên trong gallery nếu index không hợp lệ
+                    if isinstance(gallery, list) and len(gallery) > 0:
+                        print(f"Debug - returning first image: {gallery[0]}")
+                        return gallery[0]
                     
                 return None
             except Exception as e:
                 print(f"Debug - Error in select_wig: {str(e)}")
+                # Trả về hình ảnh đầu tiên trong gallery nếu có lỗi
+                if isinstance(gallery, list) and len(gallery) > 0:
+                    print(f"Debug - returning first image due to error: {gallery[0]}")
+                    return gallery[0]
                 return None
             
-        # Thêm xử lý trực tiếp cho sự kiện click
-        def gallery_click_handler(gallery, evt: gr.SelectData):
-            try:
-                if evt is None or gallery is None:
-                    return None
-                index = evt.index
-                if isinstance(gallery, list) and 0 <= index < len(gallery):
-                    chosen_wig = gallery[index]
-                    print(f"Debug - chosen wig from click: {chosen_wig}")
-                    return chosen_wig
-                return None
-            except Exception as e:
-                print(f"Debug - Error in gallery click: {str(e)}")
-                return None
-        
+        # Kết nối sự kiện select cho gallery
         wig_gallery.select(
             fn=select_wig,
-            inputs=[wig_gallery],
-            outputs=[image_input]
-        )
-        
-        # Thêm xử lý click thay thế
-        wig_gallery.click(
-            fn=gallery_click_handler,
             inputs=[wig_gallery],
             outputs=[image_input]
         )
