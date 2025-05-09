@@ -200,11 +200,11 @@ def analyze_face_shape(image):
             "Square": "Tóc xoăn mềm, tóc xếp tầng, tóc pixie với mái dài hoặc tóc bob dài."
         }
         
-        recommendation = recommendations.get(face_shape, "Không có đề xuất cụ thể.")
+        recommendation = recommendations.get(face_shape, "No recommmend.")
         
-        return f"Hình dạng khuôn mặt: {face_shape} (Độ tin cậy: {confidence:.2%})", recommendation
+        return f"Faceshape is: {face_shape} (Accuracy: {confidence:.2%})", recommendation
     else:
-        return "Không thể phân tích hình dạng khuôn mặt", None
+        return "No detect your face", None
 
 # Hàm load wig example để hiển thị trong Select Wigs
 def load_wig_example(example_path):
