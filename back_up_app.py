@@ -441,17 +441,19 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Input Column - Face
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(label="Input Face", height=400)  
+                dest_img = gr.Image(height=400)  
                 
                 # Thêm phân tích hình dạng khuôn mặt
                 analyze_btn = gr.Button("Analysis and Recommend for You")
-                face_shape_result = gr.Textbox(label="Kết quả phân tích")
-                face_recommendation = gr.Textbox(label="Đề xuất kiểu tóc")
+                gr.Markdown("**Kết quả phân tích:**")
+                face_shape_result = gr.Textbox()
+                gr.Markdown("**Đề xuất kiểu tóc:**")
+                face_recommendation = gr.Textbox()
             
             # Input Column - Wigs
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(label="Select Wigs", type="filepath", height=400)
+                image_input = gr.Image(type="filepath", height=400)
                 
                 # Hiển thị hình ảnh tóc giả mẫu
                 example_wigs = load_example_wigs()
@@ -462,11 +464,9 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                             # Tạo container để chứa cả nút và hình ảnh
                             with gr.Column(scale=1):
                                 # Sử dụng Image component thay vì HTML
-                                gr.Image(value=wig, label="", height=100)
+                                gr.Image(value=wig, height=100)
                                 # Tạo nút để xử lý sự kiện click, sử dụng text thay vì label
-                                wig_btn = gr.Button(
-                                    text="Select"
-                                )
+                                wig_btn = gr.Button("Select")
                                 # Khi nhấp vào nút, load hình ảnh đó vào ô select wig
                                 wig_btn.click(
                                     fn=lambda wig_path=wig: wig_path,
@@ -483,7 +483,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Output Column - Ở giữa để cân bằng giao diện
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(label="After try-on", interactive=False, type="filepath", height=400)
+                image_output = gr.Image(interactive=False, type="filepath", height=400)
         
         # Connect events
         # Nút phân tích khuôn mặt
