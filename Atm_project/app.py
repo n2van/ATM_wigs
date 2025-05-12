@@ -92,6 +92,40 @@ wig_recommender = FaceWigRecommender(face_predictor)
 customer_service = CustomerService()
 email_service = EmailService()
 
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
+    try:
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            sales_team_email="sansinglong71@gmail.com"
+        )
+    except Exception as e:
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
+
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
     temp_file = tempfile.NamedTemporaryFile(delete=False, dir="./tmp", suffix=".png")
