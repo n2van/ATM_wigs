@@ -17,6 +17,8 @@ import torch
 import torchvision
 import torch.nn as nn
 import torchvision.transforms as T
+import csv  # Thêm import này
+import csv  # Thêm import này
 
 # Import FaceShapePredictor từ detection.py
 from detection import FaceShapePredictor
@@ -745,3 +747,654 @@ if __name__ == "__main__":
     
     # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
     print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
+
+# Hàm lưu thông tin khách hàng
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    try:
+        # Đảm bảo thư mục tồn tại
+        data_dir = "customer_data"
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        
+        # Đảm bảo file CSV tồn tại với header
+        csv_file = os.path.join(data_dir, "customer_leads.csv")
+        if not os.path.exists(csv_file):
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'Thời gian', 'Tên khách hàng', 'Số điện thoại', 
+                    'Email', 'Hình dạng khuôn mặt', 'Mã sản phẩm quan tâm', 
+                    'Ghi chú'
+                ])
+        
+        # Lấy thời gian hiện tại
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Ghi thông tin vào file CSV
+        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                current_time, customer_name, customer_phone, 
+                customer_email, face_shape, product_code, 
+                notes
+            ])
+        
+        # Gửi email thông báo cho team sale
+        try:
+            # Nội dung email
+            subject = f"[ATMwigs] Khách hàng mới: {customer_name}"
+            message = f"""
+            <html>
+            <body>
+                <h2>ATMwigs - Thông Báo Khách Hàng Mới</h2>
+                <p>Xin chào team sale,</p>
+                <p>Có một khách hàng mới vừa để lại thông tin trên hệ thống ATMwigs:</p>
+                
+                <div style="background-color: #f0f9ff; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <h3>Thông tin khách hàng:</h3>
+                    <p><b>Tên:</b> {customer_name}</p>
+                    <p><b>Số điện thoại:</b> {customer_phone}</p>
+                    <p><b>Email:</b> {customer_email or "Không cung cấp"}</p>
+                    <p><b>Hình dạng khuôn mặt:</b> {face_shape or "Chưa phân tích"}</p>
+                    <p><b>Mã sản phẩm quan tâm:</b> {product_code or "Không cung cấp"}</p>
+                    <p><b>Ghi chú:</b> {notes or "Không có"}</p>
+                </div>
+                
+                <p>Vui lòng liên hệ với khách hàng sớm nhất có thể.</p>
+                <p>Trân trọng,<br>Hệ thống ATM Wigs</p>
+            </body>
+            </html>
+            """
+            
+            # Gửi email (cần cấu hình trong file .env)
+            # Phần này sẽ được triển khai sau khi cấu hình email
+            print(f"Đã lưu thông tin khách hàng {customer_name} và sẽ gửi email thông báo")
+            
+        except Exception as e:
+            print(f"Lỗi khi gửi email: {str(e)}")
+        
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+        
+    except Exception as e:
+        print(f"Lỗi khi lưu thông tin khách hàng: {str(e)}")
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
+
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
+    try:
+        with open("Logo.png", "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
+    except FileNotFoundError:
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
+    
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-text">
+            <div class="header-title">ATMwigs</div>
+            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
+        </div>
+    </div>
+    """)
+
+    # --- IMAGE MODE ---
+    with gr.Tab("Image Mode"):
+        # Hàng đầu tiên: Original Face và Select Wigs
+        with gr.Row():
+            # Input Column - Face
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Original Face</div>')
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
+                
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+                
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
+                face_shape_result = gr.Textbox(visible=False)
+            
+            # Input Column - Wigs
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+                
+                # Hiển thị hình ảnh tóc giả mẫu
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,
+                    elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
+                
+                # Nút để làm mới tóc giả (hiển thị tất cả)
+                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+        
+        # Hàng thứ hai: Nút Try On Wig
+        with gr.Row():
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+        
+        # Hàng thứ ba: Result
+        with gr.Row():
+            # Output Column - Ở giữa để cân bằng giao diện
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+        
+        # Connect events
+        # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
+        analyze_btn.click(
+            fn=wig_recommender.analyze_face_shape,
+            inputs=[dest_img],
+            outputs=[face_shape_result]
+        ).then(
+            fn=update_wig_examples,
+            inputs=[face_shape_result],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Nút làm mới tóc giả (hiển thị tất cả)
+        refresh_wigs_btn.click(
+            fn=lambda: wig_recommender.get_all_wigs(),
+            inputs=[],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
+        def select_wig(evt, gallery):
+            try:
+                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
+                if evt is None:
+                    return None
+                
+                # Trường hợp evt là index trực tiếp (số nguyên)
+                if isinstance(evt, int):
+                    index = evt
+                # Trường hợp evt là đối tượng có thuộc tính index
+                elif hasattr(evt, 'index'):
+                    index = evt.index
+                # Trường hợp evt là dictionary có key 'index'
+                elif isinstance(evt, dict) and 'index' in evt:
+                    index = evt['index']
+                else:
+                    print(f"Debug - event type: {type(evt)}, value: {evt}")
+                    return None
+                
+                # Kiểm tra gallery là list hoặc dict
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    return gallery[index]
+                elif isinstance(gallery, dict) and index in gallery:
+                    return gallery[index]
+                return None
+            except Exception as e:
+                print(f"Debug - Error in select_wig: {str(e)}")
+                return None
+            
+        wig_gallery.select(
+            fn=select_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
+        )
+        
+        # Try on wig
+        image_btn.click(
+            fn=run_image,
+            inputs=[image_input, dest_img],
+            outputs=image_output
+        )
+
+    # Footer
+    gr.HTML("""
+    <div class="footer">
+        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>Developed with ❤️ for virtual wig try-on</p>
+    </div>
+    """)
+
+# --- ngrok connect (optional) ---
+if args.ngrok and args.ngrok != "None":
+    def connect(token, port, options):
+        try:
+            public_url = ngrok.connect(f"127.0.0.1:{port}", **options).url()
+            print(f'ngrok URL: {public_url}')
+        except Exception as e:
+            print(f'ngrok connection aborted: {e}')
+
+    connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# --- Launch app ---
+if __name__ == "__main__":
+    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
+    demo.queue().launch(
+        favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
+        show_error=True,
+        share=args.share_gradio,
+        server_name=args.server_name,
+        server_port=args.server_port
+    )
+    
+    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
+    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
+
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
+    try:
+        with open("Logo.png", "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
+    except FileNotFoundError:
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
+    
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-text">
+            <div class="header-title">ATMwigs</div>
+            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
+        </div>
+    </div>
+    """)
+
+    # --- IMAGE MODE ---
+    with gr.Tab("Image Mode"):
+        # Hàng đầu tiên: Original Face và Select Wigs
+        with gr.Row():
+            # Input Column - Face
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Original Face</div>')
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
+                
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+                
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
+                face_shape_result = gr.Textbox(visible=False)
+            
+            # Input Column - Wigs
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+                
+                # Hiển thị hình ảnh tóc giả mẫu
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,
+                    elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
+                
+                # Nút để làm mới tóc giả (hiển thị tất cả)
+                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+        
+        # Hàng thứ hai: Nút Try On Wig
+        with gr.Row():
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+        
+        # Hàng thứ ba: Result
+        with gr.Row():
+            # Output Column - Ở giữa để cân bằng giao diện
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+        
+        # Connect events
+        # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
+        analyze_btn.click(
+            fn=wig_recommender.analyze_face_shape,
+            inputs=[dest_img],
+            outputs=[face_shape_result]
+        ).then(
+            fn=update_wig_examples,
+            inputs=[face_shape_result],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Nút làm mới tóc giả (hiển thị tất cả)
+        refresh_wigs_btn.click(
+            fn=lambda: wig_recommender.get_all_wigs(),
+            inputs=[],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
+        def select_wig(evt, gallery):
+            try:
+                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
+                if evt is None:
+                    return None
+                
+                # Trường hợp evt là index trực tiếp (số nguyên)
+                if isinstance(evt, int):
+                    index = evt
+                # Trường hợp evt là đối tượng có thuộc tính index
+                elif hasattr(evt, 'index'):
+                    index = evt.index
+                # Trường hợp evt là dictionary có key 'index'
+                elif isinstance(evt, dict) and 'index' in evt:
+                    index = evt['index']
+                else:
+                    print(f"Debug - event type: {type(evt)}, value: {evt}")
+                    return None
+                
+                # Kiểm tra gallery là list hoặc dict
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    return gallery[index]
+                elif isinstance(gallery, dict) and index in gallery:
+                    return gallery[index]
+                return None
+            except Exception as e:
+                print(f"Debug - Error in select_wig: {str(e)}")
+                return None
+            
+        wig_gallery.select(
+            fn=select_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
+        )
+        
+        # Try on wig
+        image_btn.click(
+            fn=run_image,
+            inputs=[image_input, dest_img],
+            outputs=image_output
+        )
+
+    # Footer
+    gr.HTML("""
+    <div class="footer">
+        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>Developed with ❤️ for virtual wig try-on</p>
+    </div>
+    """)
+
+# --- ngrok connect (optional) ---
+if args.ngrok and args.ngrok != "None":
+    def connect(token, port, options):
+        try:
+            public_url = ngrok.connect(f"127.0.0.1:{port}", **options).url()
+            print(f'ngrok URL: {public_url}')
+        except Exception as e:
+            print(f'ngrok connection aborted: {e}')
+
+    connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# --- Launch app ---
+if __name__ == "__main__":
+    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
+    demo.queue().launch(
+        favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
+        show_error=True,
+        share=args.share_gradio,
+        server_name=args.server_name,
+        server_port=args.server_port
+    )
+    
+    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
+    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
+
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
+    try:
+        with open("Logo.png", "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
+    except FileNotFoundError:
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
+    
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-text">
+            <div class="header-title">ATMwigs</div>
+            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
+        </div>
+    </div>
+    """)
+
+    # --- IMAGE MODE ---
+    with gr.Tab("Image Mode"):
+        # Hàng đầu tiên: Original Face và Select Wigs
+        with gr.Row():
+            # Input Column - Face
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Original Face</div>')
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
+                
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+                
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
+                face_shape_result = gr.Textbox(visible=False)
+            
+            # Input Column - Wigs
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+                
+                # Hiển thị hình ảnh tóc giả mẫu
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,
+                    elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
+                
+                # Nút để làm mới tóc giả (hiển thị tất cả)
+                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+        
+        # Hàng thứ hai: Nút Try On Wig
+        with gr.Row():
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+        
+        # Hàng thứ ba: Result
+        with gr.Row():
+            # Output Column - Ở giữa để cân bằng giao diện
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+        
+        # Connect events
+        # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
+        analyze_btn.click(
+            fn=wig_recommender.analyze_face_shape,
+            inputs=[dest_img],
+            outputs=[face_shape_result]
+        ).then(
+            fn=update_wig_examples,
+            inputs=[face_shape_result],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Nút làm mới tóc giả (hiển thị tất cả)
+        refresh_wigs_btn.click(
+            fn=lambda: wig_recommender.get_all_wigs(),
+            inputs=[],
+            outputs=[wig_gallery]
+        ).then(
+            # Khi gallery cập nhật, ẩn placeholder text
+            fn=lambda: "",
+            inputs=[],
+            outputs=[wig_gallery_placeholder]
+        )
+        
+        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
+        def select_wig(evt, gallery):
+            try:
+                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
+                if evt is None:
+                    return None
+                
+                # Trường hợp evt là index trực tiếp (số nguyên)
+                if isinstance(evt, int):
+                    index = evt
+                # Trường hợp evt là đối tượng có thuộc tính index
+                elif hasattr(evt, 'index'):
+                    index = evt.index
+                # Trường hợp evt là dictionary có key 'index'
+                elif isinstance(evt, dict) and 'index' in evt:
+                    index = evt['index']
+                else:
+                    print(f"Debug - event type: {type(evt)}, value: {evt}")
+                    return None
+                
+                # Kiểm tra gallery là list hoặc dict
+                if isinstance(gallery, list) and 0 <= index < len(gallery):
+                    return gallery[index]
+                elif isinstance(gallery, dict) and index in gallery:
+                    return gallery[index]
+                return None
+            except Exception as e:
+                print(f"Debug - Error in select_wig: {str(e)}")
+                return None
+            
+        wig_gallery.select(
+            fn=select_wig,
+            inputs=[wig_gallery],
+            outputs=[image_input]
+        )
+        
+        # Try on wig
+        image_btn.click(
+            fn=run_image,
+            inputs=[image_input, dest_img],
+            outputs=image_output
+        )
+
+    # Footer
+    gr.HTML("""
+    <div class="footer">
+        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>Developed with ❤️ for virtual wig try-on</p>
+    </div>
+    """)
+
+# --- ngrok connect (optional) ---
+if args.ngrok and args.ngrok != "None":
+    def connect(token, port, options):
+        try:
+            public_url = ngrok.connect(f"127.0.0.1:{port}", **options).url()
+            print(f'ngrok URL: {public_url}')
+        except Exception as e:
+            print(f'ngrok connection aborted: {e}')
+
+    connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# --- Launch app ---
+if __name__ == "__main__":
+    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
+    demo.queue().launch(
+        favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
+        show_error=True,
+        share=args.share_gradio,
+        server_name=args.server_name,
+        server_port=args.server_port
+    )
+    
+    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
+    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
+
+with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+    # Logo and Header
+    try:
+        with open("Logo.png", "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
+    except FileNotFoundError:
+        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
+    
+    gr.HTML(f"""
+    <div class="header-container">
+        <div class="header-logo">{icon_html}</div>
+        <div class="header-text">
+            <div class="header-title">ATMwigs</div>
+            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
+        </div>
+    </div>
+    """)
+
+    # --- IMAGE MODE ---
+    with gr.Tab("Image Mode"):
+        # Hàng đầu tiên: Original Face và Select Wigs
+        with gr.Row():
+            # Input Column - Face
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Original Face</div>')
+                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
+                
+                # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
+                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+                
+                # Ẩn kết quả phân tích (để sử dụng trong backend)
+                face_shape_result = gr.Textbox(visible=False)
+            
+            # Input Column - Wigs
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+                
+                # Hiển thị hình ảnh tóc giả mẫu
+                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
+                wig_gallery = gr.Gallery(
+                    value=[], 
+                    label="Example Wigs", 
+                    height=200,
+                    columns=5,
+                    elem_classes=["gallery-container"]
+                )
+                
+                # Thêm thông báo hướng dẫn
+                # wig_gallery_placeholder = gr.Markdown(
+                #     '<div style="text-align: center; padding: 20px; background>
+                #     )
