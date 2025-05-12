@@ -17,13 +17,16 @@ import torch
 import torchvision
 import torch.nn as nn
 import torchvision.transforms as T
-import csv  # Thêm import này
-import csv  # Thêm import này
+import csv
 
 # Import FaceShapePredictor từ detection.py
 from detection import FaceShapePredictor
 # Import FaceWigRecommender từ face_analyzer.py
 from face_analyzer import FaceWigRecommender
+from customer_service import CustomerService
+from email_service import EmailService
+from customer_service import CustomerService
+from email_service import EmailService
 
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
 
@@ -83,6 +86,12 @@ num_faces = args.max_num_faces  # This will now be 1
 face_predictor = FaceShapePredictor(args.face_model)
 # Khởi tạo bộ đề xuất tóc giả
 wig_recommender = FaceWigRecommender(face_predictor)
+# Khởi tạo dịch vụ
+customer_service = CustomerService()
+email_service = EmailService()
+# Khởi tạo dịch vụ
+customer_service = CustomerService()
+email_service = EmailService()
 
 def create_dummy_image():
     dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -643,6 +652,38 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
@@ -714,6 +755,50 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             inputs=[image_input, dest_img],
             outputs=image_output
         )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
 
     # Footer
     gr.HTML("""
@@ -734,6 +819,41 @@ if args.ngrok and args.ngrok != "None":
 
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
 
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
+    try:
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            image_path=image_path,
+            sales_team_email="sansinglong71@gmail.com"
+        )
+    except Exception as e:
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
+
 # --- Launch app ---
 if __name__ == "__main__":
     # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
@@ -748,78 +868,39 @@ if __name__ == "__main__":
     # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
     print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
 
-# Hàm lưu thông tin khách hàng
-def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape):
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
     if not customer_name or not customer_phone:
         return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
     
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
     try:
-        # Đảm bảo thư mục tồn tại
-        data_dir = "customer_data"
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
-        
-        # Đảm bảo file CSV tồn tại với header
-        csv_file = os.path.join(data_dir, "customer_leads.csv")
-        if not os.path.exists(csv_file):
-            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    'Thời gian', 'Tên khách hàng', 'Số điện thoại', 
-                    'Email', 'Hình dạng khuôn mặt', 'Mã sản phẩm quan tâm', 
-                    'Ghi chú'
-                ])
-        
-        # Lấy thời gian hiện tại
-        current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Ghi thông tin vào file CSV
-        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                current_time, customer_name, customer_phone, 
-                customer_email, face_shape, product_code, 
-                notes
-            ])
-        
-        # Gửi email thông báo cho team sale
-        try:
-            # Nội dung email
-            subject = f"[ATMwigs] Khách hàng mới: {customer_name}"
-            message = f"""
-            <html>
-            <body>
-                <h2>ATMwigs - Thông Báo Khách Hàng Mới</h2>
-                <p>Xin chào team sale,</p>
-                <p>Có một khách hàng mới vừa để lại thông tin trên hệ thống ATMwigs:</p>
-                
-                <div style="background-color: #f0f9ff; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                    <h3>Thông tin khách hàng:</h3>
-                    <p><b>Tên:</b> {customer_name}</p>
-                    <p><b>Số điện thoại:</b> {customer_phone}</p>
-                    <p><b>Email:</b> {customer_email or "Không cung cấp"}</p>
-                    <p><b>Hình dạng khuôn mặt:</b> {face_shape or "Chưa phân tích"}</p>
-                    <p><b>Mã sản phẩm quan tâm:</b> {product_code or "Không cung cấp"}</p>
-                    <p><b>Ghi chú:</b> {notes or "Không có"}</p>
-                </div>
-                
-                <p>Vui lòng liên hệ với khách hàng sớm nhất có thể.</p>
-                <p>Trân trọng,<br>Hệ thống ATM Wigs</p>
-            </body>
-            </html>
-            """
-            
-            # Gửi email (cần cấu hình trong file .env)
-            # Phần này sẽ được triển khai sau khi cấu hình email
-            print(f"Đã lưu thông tin khách hàng {customer_name} và sẽ gửi email thông báo")
-            
-        except Exception as e:
-            print(f"Lỗi khi gửi email: {str(e)}")
-        
-        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
-        
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            image_path=image_path,
+            sales_team_email="sansinglong71@gmail.com"
+        )
     except Exception as e:
-        print(f"Lỗi khi lưu thông tin khách hàng: {str(e)}")
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
         return "Không thể lưu thông tin. Vui lòng thử lại sau."
 
 with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
@@ -891,6 +972,38 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
@@ -962,6 +1075,50 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             inputs=[image_input, dest_img],
             outputs=image_output
         )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
 
     # Footer
     gr.HTML("""
@@ -981,6 +1138,41 @@ if args.ngrok and args.ngrok != "None":
             print(f'ngrok connection aborted: {e}')
 
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
+    try:
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            image_path=image_path,
+            sales_team_email="sansinglong71@gmail.com"
+        )
+    except Exception as e:
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
 
 # --- Launch app ---
 if __name__ == "__main__":
@@ -1065,6 +1257,38 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
@@ -1136,6 +1360,50 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             inputs=[image_input, dest_img],
             outputs=image_output
         )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
 
     # Footer
     gr.HTML("""
@@ -1155,6 +1423,41 @@ if args.ngrok and args.ngrok != "None":
             print(f'ngrok connection aborted: {e}')
 
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
+    try:
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            image_path=image_path,
+            sales_team_email="sansinglong71@gmail.com"
+        )
+    except Exception as e:
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
 
 # --- Launch app ---
 if __name__ == "__main__":
@@ -1239,6 +1542,38 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
         
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
+        # Thêm button để lại thông tin
+        contact_btn = gr.Button("Để Lại Thông Tin Liên Hệ", elem_classes=["try-on-button"])
+        
+        # Tạo container ẩn cho form thông tin khách hàng
+        with gr.Column(visible=False) as contact_form:
+            gr.Markdown('<div class="section-title">Thông Tin Khách Hàng</div>')
+            customer_name = gr.Textbox(label="Tên khách hàng", placeholder="Nhập tên của bạn")
+            customer_phone = gr.Textbox(label="Số điện thoại", placeholder="Nhập số điện thoại của bạn")
+            customer_email = gr.Textbox(label="Email", placeholder="Nhập email của bạn (không bắt buộc)")
+            product_code = gr.Textbox(label="Mã sản phẩm quan tâm", placeholder="Nhập mã sản phẩm tóc giả bạn quan tâm (nếu có)")
+            customer_notes = gr.Textbox(label="Ghi chú", placeholder="Nhập yêu cầu hoặc câu hỏi của bạn", lines=3)
+            
+            # Button xác nhận gửi thông tin
+            submit_info_btn = gr.Button("Gửi Thông Tin", elem_classes=["try-on-button"])
+            contact_result = gr.Textbox(label="Kết quả")
+        
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
@@ -1310,6 +1645,50 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             inputs=[image_input, dest_img],
             outputs=image_output
         )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
+        
+        # Hiển thị form thông tin khách hàng khi nhấn nút
+        contact_btn.click(
+            fn=lambda: gr.Column.update(visible=True),
+            inputs=None,
+            outputs=[contact_form]
+        )
+        
+        # Lưu thông tin khách hàng khi nhấn nút gửi
+        submit_info_btn.click(
+            fn=save_customer_info,
+            inputs=[
+                customer_name, 
+                customer_phone, 
+                customer_email, 
+                product_code, 
+                customer_notes,
+                face_shape_result,
+                dest_img
+            ],
+            outputs=[contact_result]
+        )
 
     # Footer
     gr.HTML("""
@@ -1329,6 +1708,41 @@ if args.ngrok and args.ngrok != "None":
             print(f'ngrok connection aborted: {e}')
 
     connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
+
+# Hàm lưu thông tin khách hàng và gửi email thông báo
+def save_customer_info(customer_name, customer_phone, customer_email, product_code, notes, face_shape, image_path=None):
+    if not customer_name or not customer_phone:
+        return "Vui lòng nhập đầy đủ tên và số điện thoại khách hàng"
+    
+    # Lưu thông tin khách hàng
+    success = customer_service.save_customer_info(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email,
+        face_shape=face_shape,
+        product_code=product_code,
+        notes=notes
+    )
+    
+    # Gửi email thông báo cho team sale
+    try:
+        email_service.send_customer_notification(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            face_shape=face_shape,
+            product_code=product_code,
+            notes=notes,
+            image_path=image_path,
+            sales_team_email="sansinglong71@gmail.com"
+        )
+    except Exception as e:
+        print(f"Lỗi khi gửi email: {str(e)}")
+    
+    if success:
+        return "Đã lưu thông tin của bạn thành công! Team sale sẽ liên hệ với bạn sớm nhất."
+    else:
+        return "Không thể lưu thông tin. Vui lòng thử lại sau."
 
 # --- Launch app ---
 if __name__ == "__main__":
@@ -1398,3 +1812,4 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # wig_gallery_placeholder = gr.Markdown(
                 #     '<div style="text-align: center; padding: 20px; background>
                 #     )
+                
