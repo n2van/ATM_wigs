@@ -1,28 +1,24 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
 import os
-import logging
+import datetime
+import dotenv
+
+# Tải biến môi trường từ file .env
+dotenv.load_dotenv()
 
 class EmailService:
-    def __init__(self, smtp_server="smtp.gmail.com", smtp_port=587, 
-                sender_email="", sender_password=""):
+    def __init__(self):
         """
         Khởi tạo dịch vụ email
-        
-        Args:
-            smtp_server: Máy chủ SMTP
-            smtp_port: Cổng SMTP
-            sender_email: Email người gửi
-            sender_password: Mật khẩu email người gửi
         """
-        self.smtp_server = smtp_server
-        self.smtp_port = smtp_port
-        self.sender_email = sender_email
-        self.sender_password = sender_password
+        self.smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+        self.sender_email = os.environ.get("SENDER_EMAIL", "")
+        self.sender_password = os.environ.get("SENDER_PASSWORD", "")
         
-    def send_email(self, recipient_email, subject, message, image_path=None):
+    def send_email(self, recipient_email, subject, message):
         """
         Gửi email
         
@@ -30,7 +26,6 @@ class EmailService:
             recipient_email: Email người nhận
             subject: Tiêu đề email
             message: Nội dung email (HTML)
-            image_path: Đường dẫn đến hình ảnh đính kèm (nếu có)
             
         Returns:
             bool: True nếu gửi thành công, False nếu thất bại
@@ -49,15 +44,6 @@ class EmailService:
             # Thêm nội dung
             email.attach(MIMEText(message, "html"))
             
-            # Thêm hình ảnh nếu có
-            if image_path and os.path.exists(image_path):
-                with open(image_path, "rb") as img_file:
-                    img_data = img_file.read()
-                    image = MIMEImage(img_data)
-                    image.add_header('Content-ID', '<image1>')
-                    image.add_header('Content-Disposition', 'attachment', filename=os.path.basename(image_path))
-                    email.attach(image)
-            
             # Kết nối và gửi email
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
@@ -73,7 +59,7 @@ class EmailService:
     
     def send_customer_notification(self, customer_name, customer_phone, customer_email, 
                                   product_code="", face_shape="", notes="", 
-                                  image_path=None, sales_team_email="sansinglong71@gmail.com"):
+                                  sales_team_email="sansinglong71@gmail.com"):
         """
         Gửi email thông báo về khách hàng mới cho team sale
         
@@ -84,7 +70,6 @@ class EmailService:
             product_code: Mã sản phẩm quan tâm (nếu có)
             face_shape: Hình dạng khuôn mặt (nếu có)
             notes: Ghi chú thêm (nếu có)
-            image_path: Đường dẫn đến hình ảnh khuôn mặt khách hàng (nếu có)
             sales_team_email: Email team sale (mặc định là sansinglong71@gmail.com)
             
         Returns:
@@ -145,7 +130,7 @@ class EmailService:
                     <p>Trân trọng,<br>Hệ thống ATM Wigs</p>
                 </div>
                 <div class="footer">
-                    <p>© {2023} ATM Wigs. Tất cả các quyền được bảo lưu.</p>
+                    <p>© {datetime.datetime.now().year} ATM Wigs. Tất cả các quyền được bảo lưu.</p>
                     <p>Email này được gửi tự động từ hệ thống.</p>
                 </div>
             </div>
@@ -154,4 +139,4 @@ class EmailService:
         """
         
         # Gửi email thông báo cho team sale
-        return self.send_email(sales_team_email, subject, message, image_path)
+        return self.send_email(sales_team_email, subject, message)
