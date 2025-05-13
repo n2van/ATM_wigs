@@ -17,6 +17,8 @@ import torch
 import torchvision
 import torch.nn as nn
 import torchvision.transforms as T
+import logging
+from datetime import datetime
 
 # Import FaceShapePredictor từ detection.py
 from detection import FaceShapePredictor
@@ -25,19 +27,96 @@ from face_analyzer import FaceWigRecommender
 
 print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
 
+# Thiết lập logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app_cleanup.log"),
+        logging.StreamHandler()
+    ]
+)
+
 def cleanup_temp(folder_path):
     try:
         shutil.rmtree(folder_path)
+        logging.info(f"Đã xóa thư mục {folder_path} thành công.")
         print("Gradio cache cleared successfully.")
     except Exception as e:
+        logging.error(f"Lỗi khi xóa thư mục {folder_path}: {str(e)}")
         print(f"Error: {e}")
+
+def check_folder_activity(folder_path, days_threshold=1):
+    """
+    Kiểm tra xem thư mục có hoạt động nào trong số ngày quy định không.
+    Nếu không có hoạt động, xóa toàn bộ thư mục.
+    """
+    logging.info(f"Đang kiểm tra hoạt động của thư mục {folder_path}...")
+    
+    if not os.path.exists(folder_path):
+        logging.info(f"Thư mục {folder_path} không tồn tại.")
+        return
+    
+    # Lấy thời gian hiện tại
+    current_time = time.time()
+    # Chuyển đổi ngày thành giây
+    threshold_seconds = days_threshold * 24 * 60 * 60
+    
+    # Kiểm tra xem có file nào trong thư mục được sửa đổi trong khoảng thời gian quy định
+    has_recent_activity = False
+    
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                # Lấy thời gian sửa đổi gần nhất
+                mtime = os.path.getmtime(file_path)
+                if current_time - mtime < threshold_seconds:
+                    has_recent_activity = True
+                    logging.info(f"Phát hiện hoạt động gần đây trong file: {file_path}")
+                    break
+            except Exception as e:
+                logging.error(f"Lỗi khi kiểm tra file {file_path}: {str(e)}")
+        
+        if has_recent_activity:
+            break
+    
+    # Nếu không có hoạt động gần đây, xóa thư mục
+    if not has_recent_activity:
+        try:
+            # Xóa tất cả nội dung trong thư mục
+            for item in os.listdir(folder_path):
+                item_path = os.path.join(folder_path, item)
+                if os.path.isfile(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+            
+            logging.info(f"Đã xóa toàn bộ nội dung trong thư mục {folder_path} do không có hoạt động trong {days_threshold} ngày.")
+            
+            # Tạo lại thư mục trống
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+                logging.info(f"Đã tạo lại thư mục {folder_path} trống.")
+        except Exception as e:
+            logging.error(f"Lỗi khi xóa thư mục {folder_path}: {str(e)}")
+    else:
+        logging.info(f"Thư mục {folder_path} có hoạt động trong {days_threshold} ngày qua, không cần xóa.")
 
 # Prepare temp folder
 os.environ["GRADIO_TEMP_DIR"] = "./tmp"
+
+# Kiểm tra hoạt động của thư mục tmp trước khi xóa
 if os.path.exists("./tmp"):
-    cleanup_temp(os.environ['GRADIO_TEMP_DIR'])
+    check_folder_activity("./tmp", days_threshold=1)
+    # Nếu thư mục vẫn tồn tại sau khi kiểm tra (có hoạt động gần đây), xóa nội dung
+    if os.path.exists("./tmp"):
+        cleanup_temp(os.environ['GRADIO_TEMP_DIR'])
+
+# Tạo lại thư mục tmp nếu không tồn tại
 if not os.path.exists("./tmp"):
     os.makedirs("./tmp")
+    logging.info("Đã tạo thư mục tmp mới.")
 
 # Tạo thư mục chứa các hình ảnh mẫu nếu chưa tồn tại
 if not os.path.exists("./example_wigs"):
