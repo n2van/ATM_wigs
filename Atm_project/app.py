@@ -693,9 +693,9 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
-                wig_gallery = gr.Gallery(
+                wig_gallery = gr.Examples(
                     value=[], 
-                    label="Example Wigs", 
+                    label="Recommend For You", 
                     height=200,
                     columns=5,
                     elem_classes=["gallery-container"]
