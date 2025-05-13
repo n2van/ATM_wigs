@@ -795,7 +795,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     # Footer
     gr.HTML("""
     <div class="footer">
-        <p>© 2023 ATMwigs - All rights reserved</p>
+        <p>MongolianWigs All rights reserved</p>
         <p>Developed with ❤️ for virtual wig try-on</p>
     </div>
     """)
