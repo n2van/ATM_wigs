@@ -300,17 +300,15 @@ body {
     background-color: #f8fafc;
     color: #1e293b;
 }
-
 .gradio-container {
-    max-width: 1400px !important;
-    margin: 0 auto;
+    /*width: 1200px;
+    margin: 0 auto;*/
     background-color: #ffffff;
     border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
     border-radius: 10px;
     box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
-    padding: 25px;
+    padding: 5px;
 }
-
 .header-container {
     padding: 20px;
     margin-bottom: 20px;
@@ -321,15 +319,12 @@ body {
     display: flex;
     align-items: center;
 }
-
 .header-logo {
     margin-right: 20px; /* Khoảng cách giữa logo và text */
 }
-
 .header-text {
     flex: 1;
 }
-
 .header-title {
     font-size: 2.5rem;
     font-weight: bold;
@@ -337,12 +332,14 @@ body {
     margin-bottom: 5px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
-
 .header-subtitle {
     font-size: 1.2rem;
     color: #bfdbfe;
 }
-
+.fillable.svelte-1y320eu.svelte-1y320eu:not(.fill_width)
+{
+max-width: 100%; !important;
+}
 .input-panel {
     background-color: #6194c7;
     border-radius: 10px;
@@ -350,7 +347,6 @@ body {
     margin-bottom: 15px;
     border: 1px solid #e2e8f0;
 }
-
 .output-panel {
     background-color: #6194c7;
     border-radius: 10px;
@@ -359,7 +355,6 @@ body {
     margin: 0 auto; /* Giúp căn giữa panel */
     max-width: 800px; /* Giới hạn chiều rộng khi đứng một mình */
 }
-
 .control-panel {
     border-radius: 10px;
     padding: 15px;
@@ -367,7 +362,6 @@ body {
     border: 1px solid #e2e8f0;
     text-align: center;
 }
-
 .face-container {
     background-color: #6194c7;
     border-radius: 8px;
@@ -375,7 +369,6 @@ body {
     border: 1px solid #e2e8f0;
     margin-bottom: 10px;
 }
-
 .section-title {
     font-weight: bold;
     font-size: 1.2rem;
@@ -387,7 +380,6 @@ body {
     background-color: #e6f0ff; /* Nền xanh dương rất nhạt */
     display: inline-block;
 }
-
 .footer {
     text-align: center;
     margin-top: 40px;
@@ -400,7 +392,6 @@ body {
     border-radius: 5px;
     background-color: #e6f0ff;
 }
-
 .face-analysis {
     background-color: #f0f9ff;
     border: 1px solid #a0c8ff;
@@ -409,7 +400,6 @@ body {
     margin-top: 10px;
     font-size: 1rem;
 }
-
 .face-recommendation {
     background-color: #f0fff4;
     border: 1px solid #a0ffc8;
@@ -418,7 +408,6 @@ body {
     margin-top: 10px;
     font-size: 1rem;
 }
-
 /* CSS cho gallery hình ảnh mẫu */
 .example-gallery {
     display: grid;
@@ -427,7 +416,6 @@ body {
     margin-top: 10px;
     width: 100%;
 }
-
 /* Style cho gallery và các item trong gallery */
 .gradio-gallery {
     display: grid !important;
@@ -436,7 +424,6 @@ body {
     width: 100% !important;
     overflow: hidden !important;
 }
-
 .gradio-gallery .thumbnail-image {
     width: 100% !important;
     height: 120px !important; /* Tăng chiều cao một chút để tỉ lệ đẹp hơn */
@@ -446,13 +433,11 @@ body {
     transition: all 0.2s ease !important;
     border: 2px solid transparent !important;
 }
-
 .gradio-gallery .thumbnail-image:hover {
     transform: scale(1.05) !important;
     border-color: #003d99 !important;
     box-shadow: 0 0 10px rgba(0, 61, 153, 0.3) !important;
 }
-
 /* Điều chỉnh kích thước hàng và cột trong gallery */
 .wrap.svelte-p3y7hu {
     grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
@@ -461,7 +446,6 @@ body {
     justify-content: space-between !important;
     padding: 0 !important;
 }
-
 /* Style cho container chứa gallery */
 .gallery-container {
     width: 100% !important;
@@ -473,7 +457,6 @@ body {
     border: 1px solid #a0c8ff !important;
     margin-bottom: 10px !important;
 }
-
 /* Nút đẹp hơn */
 button.primary {
     background-color: #003d99 !important; /* Màu xanh dương đậm hơn */
@@ -482,13 +465,11 @@ button.primary {
     letter-spacing: 0.5px !important;
     color: white !important; /* Đảm bảo chữ màu trắng */
 }
-
 button.primary:hover {
     background-color: #0052cc !important; 
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
-
 /* Nút Analyze Face Shape */
 .analyze-btn {
     background-color: #003d99 !important;
@@ -500,12 +481,10 @@ button.primary:hover {
     transition: all 0.3s ease !important;
     font-size: 0.9rem !important; /* Font nhỏ hơn */
 }
-
 .analyze-btn:hover {
     background-color: #0052cc !important;
     box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
-
 /* Nút Show All Wigs */
 .show-all-btn {
     background-color: #003d99 !important;
@@ -516,12 +495,10 @@ button.primary:hover {
     cursor: pointer !important;
     transition: all 0.3s ease !important;
 }
-
 .show-all-btn:hover {
     background-color: #0052cc !important;
     box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
-
 /* Đảm bảo nút Try On Wig nổi bật */
 .try-on-button {
     background-color: #003d99 !important;
@@ -537,32 +514,26 @@ button.primary:hover {
     cursor: pointer !important;
     transition: all 0.3s ease !important;
 }
-
 .try-on-button:hover {
     background-color: #0052cc !important;
     box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
 }
-
 /* Custom scroll bar cho gallery */
 .gallery-container::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
-
 .gallery-container::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
-
 .gallery-container::-webkit-scrollbar-thumb {
     background: #a0c8ff;
     border-radius: 10px;
 }
-
 .gallery-container::-webkit-scrollbar-thumb:hover {
     background: #6194c7;
 }
-
 /* Hãy đặt css riêng cho gallery */
 .wig-gallery-container {
     width: 100%;
@@ -574,7 +545,6 @@ button.primary:hover {
     padding: 5px;
     margin-bottom: 10px;
 }
-
 /* Style đồng nhất cho tất cả các hình ảnh */
 .image-container img,
 .gradio-image img,
@@ -588,7 +558,6 @@ button.primary:hover {
     border-radius: 8px;
     border: 1px solid #e2e8f0;
 }
-
 /* Style cho container chứa hình ảnh */
 .image-display-container {
     height: 480px !important; /* Thêm khoảng trống cho label */
@@ -601,6 +570,18 @@ button.primary:hover {
     padding: 10px;
     width: 100%;
 }
+/* Mobile */
+<style>
+@media (max-width:600px){
+	.gradio-container{
+		width:100% !important;
+		padding:0px !important;
+	}
+	.app.svelte-1y320eu.svelte-1y320eu{
+		padding:5px !important;
+	}
+}
+</style>
 """
 
 # Sử dụng theme đơn giản cho các phiên bản Gradio cũ
@@ -678,7 +659,13 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Original Face</div>')
                 dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
-                
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Wigs</div>')
+                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"]) 
+            with gr.Row():  
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                 
@@ -686,16 +673,14 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 face_shape_result = gr.Textbox(visible=False)
             
             # Input Column - Wigs
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
-                
+
+  
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
-                wig_gallery = gr.Examples(
+                wig_gallery = gr.Gallery(
                     value=[], 
-                    label="Recommend For You", 
+                    label="Example Wigs", 
                     height=200,
                     columns=5,
                     elem_classes=["gallery-container"]
@@ -714,11 +699,8 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ ba: Result
-        with gr.Row():
             # Output Column - Ở giữa để cân bằng giao diện
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+
         
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
@@ -814,12 +796,12 @@ if args.ngrok and args.ngrok != "None":
 # --- Launch app ---
 if __name__ == "__main__":
     # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
-    demo.queue().launch(
+    demo.launch(
         favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=True,
         show_error=True,
-        share=args.share_gradio,
-        server_name=args.server_name,
-        server_port=args.server_port
     )
     
     # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
