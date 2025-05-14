@@ -632,7 +632,7 @@ class WigSelector:
 # Khởi tạo WigSelector
 wig_selector = WigSelector()
 
-with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as demo:
+with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs") as demo:
     # Logo and Header
     try:
         with open("Logo.png", "rb") as f:
@@ -645,7 +645,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     <div class="header-container">
         <div class="header-logo">{icon_html}</div>
         <div class="header-text">
-            <div class="header-title">ATMwigs</div>
+            <div class="header-title">MongolianWigs</div>
             <div class="header-subtitle">Virtual Try-on System for Wigs</div>
         </div>
     </div>
