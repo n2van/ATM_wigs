@@ -690,6 +690,10 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 gr.Markdown('<div class="section-title">Wigs</div>')
                 image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
                 
+            with gr.Column(scale=1):
+                gr.Markdown('<div class="section-title">Result</div>')
+                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+                
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
                 # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
@@ -714,11 +718,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ ba: Result
-        with gr.Row():
-            # Output Column - Ở giữa để cân bằng giao diện
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])
+
         
         # Connect events
         # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
