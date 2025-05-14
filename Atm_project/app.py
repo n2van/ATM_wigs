@@ -670,11 +670,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
               
-             with gr.Column(scale=1):
+            with gr.Column(scale=1):
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                     
                 face_shape_result = gr.Textbox(visible=False)
-             with gr.Column(scale=2):
+            with gr.Column(scale=2):
                 gr.Markdown('<div class="section-title">Recommend For You</div>')
                 wig_gallery = gr.Gallery(
                     value=[], 
