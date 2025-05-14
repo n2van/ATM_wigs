@@ -669,7 +669,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
-                image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+              
             
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                     
@@ -679,23 +679,29 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
 
     
                     # Hiển thị hình ảnh tóc giả mẫu
-                gr.Markdown('<div class="section-title">Example Wigs</div>')
+                gr.Markdown('<div class="section-title">Recommend For You</div>')
                     # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
                 wig_gallery = gr.Gallery(
                     value=[], 
-                    label="Example Wigs", 
+                    label="Recommend Wigs", 
+                    show_label=False,
                     height=200,
                     columns=5,
                     elem_classes=["gallery-container"]
                 )
                 
                 # Thêm thông báo hướng dẫn
-                wig_gallery_placeholder = gr.Markdown(
-                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
-                )
+
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
-                refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+
+                image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
+        with gr.Row():   
+            refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+            wig_gallery_placeholder = gr.Markdown(
+                    '<div style="text-align: center; padding: 20px; background-color: #f0f9ff; border: 2px dashed #a0c8ff; border-radius: 8px; margin: 10px 0;">👆 Analyze your face first to see suitable wigs 👆</div>'
+                )
+
         analyze_btn.click(
             fn=wig_recommender.analyze_face_shape,
             inputs=[dest_img],
