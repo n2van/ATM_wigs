@@ -670,11 +670,11 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
               
-            with gr.Column(scale=1):
+             with gr.Column(scale=1):
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                     
                 face_shape_result = gr.Textbox(visible=False)
-            with gr.Column(scale=2):
+             with gr.Column(scale=2):
                 gr.Markdown('<div class="section-title">Recommend For You</div>')
                 wig_gallery = gr.Gallery(
                     value=[], 
@@ -701,7 +701,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Khi gallery cập nhật, ẩn placeholder text
             fn=lambda: "",
             inputs=[],
-            outputs=[wig_gallery_placeholder]
+            outputs=[]
         )
         
         # Nút làm mới tóc giả (hiển thị tất cả)
@@ -713,7 +713,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             # Khi gallery cập nhật, ẩn placeholder text
             fn=lambda: "",
             inputs=[],
-            outputs=[wig_gallery_placeholder]
+            outputs=[]
         )
         
         # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
