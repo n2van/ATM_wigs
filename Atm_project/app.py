@@ -645,7 +645,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
     <div class="header-container">
         <div class="header-logo">{icon_html}</div>
         <div class="header-text">
-            <div class="header-title">MongolianWigs</div>
+            <div class="header-title">ATMwigs</div>
             <div class="header-subtitle">Virtual Try-on System for Wigs</div>
         </div>
     </div>
@@ -665,7 +665,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"]) 
-	    with gr.Row():  
+            with gr.Row():  
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                 
@@ -677,7 +677,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
   
                 # Hiển thị hình ảnh tóc giả mẫu
                 gr.Markdown('<div class="section-title">Example Wigs</div>')
-
+                # Khởi tạo gallery với list rỗng (không hiển thị ảnh nào)
                 wig_gallery = gr.Gallery(
                     value=[], 
                     label="Example Wigs", 
@@ -693,11 +693,10 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 
                 # Nút để làm mới tóc giả (hiển thị tất cả)
                 refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
-		image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ hai: Nút Try On Wig
         with gr.Row():
-            
+            image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         
         # Hàng thứ ba: Result
             # Output Column - Ở giữa để cân bằng giao diện
