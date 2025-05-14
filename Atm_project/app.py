@@ -665,9 +665,9 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"]) 
-            with gr.Row():  
+        with gr.Row():  
                 # Thêm phân tích hình dạng khuôn mặt - chỉ giữ nút phân tích
-                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
+        	analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
                 
                 # Ẩn kết quả phân tích (để sử dụng trong backend)
                 face_shape_result = gr.Textbox(visible=False)
@@ -695,15 +695,8 @@ with gr.Blocks(theme=theme, css=custom_css, title="ATMwigs - Try-on Wigs") as de
                 refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
         
         # Hàng thứ hai: Nút Try On Wig
-        with gr.Row():
             image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
-        
-        # Hàng thứ ba: Result
-            # Output Column - Ở giữa để cân bằng giao diện
 
-        
-        # Connect events
-        # Nút phân tích khuôn mặt và hiển thị tóc giả phù hợp
         analyze_btn.click(
             fn=wig_recommender.analyze_face_shape,
             inputs=[dest_img],
