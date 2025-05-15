@@ -629,6 +629,18 @@ class WigSelector:
             print(f"Error selecting wig: {str(e)}")
             return None
 
+# Hàm tải mặc định tóc giả cho khuôn mặt Oval
+def load_default_oval_wigs():
+    # Mặc định hiển thị tóc giả cho khuôn mặt Oval
+    return wig_recommender.get_wigs_for_face_shape("Oval")
+
+# Hàm lấy tóc giả đầu tiên từ danh sách tóc giả Oval
+def get_first_oval_wig():
+    oval_wigs = wig_recommender.get_wigs_for_face_shape("Oval")
+    if oval_wigs and len(oval_wigs) > 0:
+        return oval_wigs[0]
+    return None
+
 # Khởi tạo WigSelector
 wig_selector = WigSelector()
 
@@ -661,7 +673,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
                 dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
+                image_input = gr.Image(type="filepath", value=get_first_oval_wig(), height=450, elem_classes=["wig-image", "image-container"])
             with gr.Column(scale=1):
                 gr.Markdown('<div class="section-title">Result</div>')
                 image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])  
@@ -672,18 +684,18 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
               
             with gr.Column(scale=1):
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
-                    
-                face_shape_result = gr.Textbox(visible=False)
             with gr.Column(scale=2):
                 gr.Markdown('<div class="section-title">Recommend For You</div>')
                 wig_gallery = gr.Gallery(
-                    value=[], 
+                    value=load_default_oval_wigs(), 
                     label="Recommend Wigs", 
                     show_label=False,
                     height=200,
                     columns=5,
                     elem_classes=["gallery-container"]
                 )
+                # Mặc định hiển thị kết quả phân tích khuôn mặt Oval
+                face_shape_result = gr.Textbox(value="Hình dạng khuôn mặt: Oval", visible=False)
             with gr.Column(scale=1):
                 image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
         with gr.Row():   
