@@ -1,792 +1,524 @@
+import cv2
+import onnxruntime as rt
+import sys
+sys.path.insert(1, './recognition')
+from scrfd import SCRFD
+from arcface_onnx import ArcFaceONNX
+import os.path as osp
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-import gradio as gr
-from refacer import Refacer
-import argparse
-import ngrok
-import imageio
-import numpy as np
+import requests
+from tqdm import tqdm
+import ffmpeg
+import random
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
+from insightface.model_zoo.inswapper import INSwapper
+import psutil
+from enum import Enum
+from insightface.app.common import Face
+from insightface.utils.storage import ensure_available
+import re
+import subprocess
 from PIL import Image
-import tempfile
-import base64
-import pyfiglet
-import shutil
+import numpy as np
 import time
-import torch
-import torchvision
-import torch.nn as nn
-import torchvision.transforms as T
-import logging
-from datetime import datetime
+from codeformer_wrapper import enhance_image, enhance_image_memory
+import tempfile
 
-# Import FaceShapePredictor từ detection.py
-from detection import FaceShapePredictor
-# Import FaceWigRecommender từ face_analyzer.py
-from face_analyzer import FaceWigRecommender
+gc = __import__('gc')
 
-print("\033[94m" + pyfiglet.Figlet(font='slant').renderText("Development by Van Nguyen") + "\033[0m")
-
-# Thiết lập logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("app_cleanup.log"),
-        logging.StreamHandler()
-    ]
-)
-
-def cleanup_temp(folder_path):
-    try:
-        shutil.rmtree(folder_path)
-        logging.info(f"Đã xóa thư mục {folder_path} thành công.")
-        print("Gradio cache cleared successfully.")
-    except Exception as e:
-        logging.error(f"Lỗi khi xóa thư mục {folder_path}: {str(e)}")
-        print(f"Error: {e}")
-
-def check_folder_activity(folder_path, days_threshold=1):
-    """
-    Kiểm tra xem thư mục có hoạt động nào trong số ngày quy định không.
-    Nếu không có hoạt động, xóa toàn bộ thư mục.
-    """
-    logging.info(f"Đang kiểm tra hoạt động của thư mục {folder_path}...")
-    
-    if not os.path.exists(folder_path):
-        logging.info(f"Thư mục {folder_path} không tồn tại.")
-        return
-    
-    # Lấy thời gian hiện tại
-    current_time = time.time()
-    # Chuyển đổi ngày thành giây
-    threshold_seconds = days_threshold * 24 * 60 * 60
-    
-    # Kiểm tra xem có file nào trong thư mục được sửa đổi trong khoảng thời gian quy định
-    has_recent_activity = False
-    
-    for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            try:
-                # Lấy thời gian sửa đổi gần nhất
-                mtime = os.path.getmtime(file_path)
-                if current_time - mtime < threshold_seconds:
-                    has_recent_activity = True
-                    logging.info(f"Phát hiện hoạt động gần đây trong file: {file_path}")
-                    break
-            except Exception as e:
-                logging.error(f"Lỗi khi kiểm tra file {file_path}: {str(e)}")
-        
-        if has_recent_activity:
-            break
-    
-    # Nếu không có hoạt động gần đây, xóa thư mục
-    if not has_recent_activity:
+# Preload NVIDIA DLLs if Windows
+if sys.platform in ("win32", "win64"):
+    if hasattr(os, "add_dll_directory"):
         try:
-            # Xóa tất cả nội dung trong thư mục
-            for item in os.listdir(folder_path):
-                item_path = os.path.join(folder_path, item)
-                if os.path.isfile(item_path):
-                    os.remove(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-            
-            logging.info(f"Đã xóa toàn bộ nội dung trong thư mục {folder_path} do không có hoạt động trong {days_threshold} ngày.")
-            
-            # Tạo lại thư mục trống
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
-                logging.info(f"Đã tạo lại thư mục {folder_path} trống.")
+            os.add_dll_directory(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin")
+            os.add_dll_directory(r"C:\Program Files\NVIDIA\CUDNN\v9.4\bin\12.6")
         except Exception as e:
-            logging.error(f"Lỗi khi xóa thư mục {folder_path}: {str(e)}")
-    else:
-        logging.info(f"Thư mục {folder_path} có hoạt động trong {days_threshold} ngày qua, không cần xóa.")
+            print(f"[INFO] Failed to add CUDA or CUDNN DLL directory: {e}")
+            print("[INFO] This error can be ignored if running in CPU mode. Otherwise, make sure the paths are correct.")
 
-# Prepare temp folder
-os.environ["GRADIO_TEMP_DIR"] = "./tmp"
+    if hasattr(rt, "preload_dlls"):
+        rt.preload_dlls()
 
-# Kiểm tra hoạt động của thư mục tmp trước khi xóa
-if os.path.exists("./tmp"):
-    check_folder_activity("./tmp", days_threshold=1)
-    # Nếu thư mục vẫn tồn tại sau khi kiểm tra (có hoạt động gần đây), xóa nội dung
-    if os.path.exists("./tmp"):
-        cleanup_temp(os.environ['GRADIO_TEMP_DIR'])
+class RefacerMode(Enum):
+    CPU, CUDA, COREML, TENSORRT = range(1, 5)
 
-# Tạo lại thư mục tmp nếu không tồn tại
-if not os.path.exists("./tmp"):
-    os.makedirs("./tmp")
-    logging.info("Đã tạo thư mục tmp mới.")
-
-# Tạo thư mục chứa các hình ảnh mẫu nếu chưa tồn tại
-if not os.path.exists("./example_wigs"):
-    os.makedirs("./example_wigs")
-    print("Đã tạo thư mục 'example_wigs'. Vui lòng thêm các hình ảnh tóc giả mẫu vào thư mục này.")
-
-# Tạo các thư mục con cho từng kiểu khuôn mặt
-face_shapes = ["Heart", "Oblong", "Oval", "Round", "Square"]
-for shape in face_shapes:
-    face_shape_folder = f"./example_wigs/{shape}"
-    if not os.path.exists(face_shape_folder):
-        os.makedirs(face_shape_folder)
-        print(f"Đã tạo thư mục '{face_shape_folder}' cho kiểu khuôn mặt {shape}.")
-
-def load_example_wigs():
-    return wig_recommender.get_wigs_for_face_shape("Oval")
-
-# Hàm tải hình ảnh tóc giả theo hình dạng khuôn mặt - có thể bỏ và dùng wig_recommender.get_wigs_for_face_shape()
-def load_wigs_for_face_shape(face_shape):
-    return wig_recommender.get_wigs_for_face_shape(face_shape)
-
-# Parse arguments
-parser = argparse.ArgumentParser(description='Refacer')
-parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
-parser.add_argument("--force_cpu", default=False, action="store_true")
-parser.add_argument("--share_gradio", default=False, action="store_true")
-parser.add_argument("--server_name", type=str, default="127.0.0.1")
-parser.add_argument("--server_port", type=int, default=1356)
-parser.add_argument("--colab_performance", default=False, action="store_true")
-parser.add_argument("--ngrok", type=str, default=None)
-parser.add_argument("--ngrok_region", type=str, default="us")
-parser.add_argument("--face_model", type=str, default="best_model.pth")
-args = parser.parse_args()
-
-# Initialize
-refacer = Refacer(force_cpu=args.force_cpu, colab_performance=args.colab_performance)
-num_faces = args.max_num_faces  # This will now be 1
-
-# Khởi tạo bộ nhận dạng hình dạng khuôn mặt
-face_predictor = FaceShapePredictor(args.face_model)
-# Khởi tạo bộ đề xuất tóc giả
-wig_recommender = FaceWigRecommender(face_predictor)
-
-def create_dummy_image():
-    dummy = Image.new('RGB', (1, 1), color=(255, 255, 255))
-    temp_file = tempfile.NamedTemporaryFile(delete=False, dir="./tmp", suffix=".png")
-    dummy.save(temp_file.name)
-    return temp_file.name
-
-def run_image(image_path, destination):
-    # Simplified for single wig mode
-    face_mode = "Single Face"
-    partial_reface_ratio = 0.0
-    disable_similarity = True
-    multiple_faces_mode = False
-
-    faces = []
-    if destination is not None:
-        faces.append({
-            'origin': None,
-            'destination': destination,
-            'threshold': 0.0
-        })
-
-    return refacer.reface_image(image_path, faces, disable_similarity=disable_similarity, 
-                               multiple_faces_mode=multiple_faces_mode, 
-                               partial_reface_ratio=partial_reface_ratio)
-
-def load_first_frame(filepath):
-    if filepath is None:
-        return None
-    frames = imageio.get_reader(filepath)
-    return frames.get_data(0)
-
-def extract_faces_auto(filepath, refacer_instance, max_faces=1, isvideo=False):
-    if filepath is None:
-        return [None] * max_faces
-
-    if isvideo and os.path.getsize(filepath) > 5 * 1024 * 1024:
-        print("Video too large for auto-extract, skipping face extraction.")
-        return [None] * max_faces
-
-    frame = load_first_frame(filepath)
-    if frame is None:
-        return [None] * max_faces
-
-    while len(frame.shape) > 3:
-        frame = frame[0]
-
-    if frame.shape[-1] != 3:
-        raise ValueError(f"Expected last dimension to be 3 (RGB), but got {frame.shape[-1]}")
-
-    temp_image_path = os.path.join("./tmp", f"temp_face_extract_{int(time.time() * 1000)}.png")
-    Image.fromarray(frame).save(temp_image_path)
-
-    try:
-        faces = refacer_instance.extract_faces_from_image(temp_image_path, max_faces=max_faces)
-        result = faces + [None] * (max_faces - len(faces))
-        return result
-    finally:
-        if os.path.exists(temp_image_path):
-            try:
-                os.remove(temp_image_path)
-            except Exception as e:
-                print(f"Warning: Could not delete temp file {temp_image_path}: {e}")
-
-# Simplified for single face
-def distribute_faces(filepath):
-    faces = extract_faces_auto(filepath, refacer, max_faces=1)
-    return faces[0]
-
-# Hàm phân tích khuôn mặt - có thể bỏ vì đã có hàm tương tự trong FaceWigRecommender
-def analyze_face_shape(image):
-    face_shape, result_text = wig_recommender.analyze_face_shape(image)
-    return result_text
-
-# Hàm cập nhật hiển thị tóc giả dựa trên kết quả phân tích
-def update_wig_examples(face_shape_result):
-    if face_shape_result and "Hình dạng khuôn mặt:" in face_shape_result:
-        # Trích xuất hình dạng khuôn mặt từ kết quả
-        for shape in face_shapes:
-            if shape in face_shape_result:
-                # Tải tóc giả từ thư mục tương ứng với hình dạng khuôn mặt
-                wigs = wig_recommender.get_wigs_for_face_shape(shape)
-                return wigs
+class Refacer:
+    def __init__(self, force_cpu=False, colab_performance=False):
+        self.disable_similarity = False
+        self.multiple_faces_mode = False
+        self.first_face = False
+        self.force_cpu = force_cpu
+        self.colab_performance = colab_performance
+        self.use_num_cpus = mp.cpu_count()
+        self.__check_encoders()
+        self.__check_providers()
+        self.total_mem = psutil.virtual_memory().total
+        self.__init_apps()
+        
+    def _partial_face_blend(self, original_frame, swapped_frame, face):
+        h_frame, w_frame = original_frame.shape[:2]
     
-    # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
-    all_wigs = wig_recommender.get_wigs_for_face_shape("Oval")
-    return all_wigs
-
-def update_dropdown(gallery_images):
-    if gallery_images and isinstance(gallery_images, list) and len(gallery_images) > 0:
-        # Tạo danh sách các tùy chọn: (label: "Wig #N", value: đường dẫn)
-        choices = [{"label": f"Wig #{i+1}", "value": i} for i in range(len(gallery_images))]
-        return gr.Dropdown.update(
-            choices=choices,
-            value=None,
-            visible=True
-        )
-    return gr.Dropdown.update(visible=False)
-
-# Cập nhật refresh wigs button
-def refresh_wigs():
-    try:
-        wigs = wig_recommender.get_wigs_for_face_shape("Oval")
-        if not wigs or not isinstance(wigs, list):
-            print("No wigs found or invalid result from get_all_wigs")
-            wigs = []
-        print(f"Refreshed wigs: {len(wigs)} found")
-        return wigs
-    except Exception as e:
-        print(f"Error in refresh_wigs: {str(e)}")
-        return []
-
-# Hàm xử lý chọn wig đơn giản nhất có thể
-def select_wig_direct(index, gallery):
-    if gallery and isinstance(gallery, list) and index < len(gallery):
-        selected = gallery[index]
-        print(f"Selected wig directly at index {index}: {selected}")
-        return selected
-    return None
-
-# Hàm load wig example để hiển thị trong Select Wigs
-def load_wig_example(example_path):
-    return example_path
-
-# Hàm phân tích khuôn mặt và hiển thị các tóc giả phù hợp
-def analyze_and_recommend(image):
-    face_shape, result_text = wig_recommender.analyze_face_shape(image)
-    if face_shape:
-        # Lấy danh sách tóc giả phù hợp
-        wigs = wig_recommender.get_wigs_for_face_shape(face_shape)
-        return wigs if wigs else []
-    return wig_recommender.get_wigs_for_face_shape("Oval")
-
-# --- CSS tùy chỉnh ---
-# Thêm vào phần CSS
-custom_css = """
-body {
-    background-color: #f8fafc;
-    color: #1e293b;
-}
-.gradio-container {
-    /*width: 1200px;
-    margin: 0 auto;*/
-    background-color: #ffffff;
-    border-top: 5px solid #0e1b4d; /* Chỉ viền trên với màu xanh navy */
-    border-radius: 10px;
-    box-shadow: 0 3px 20px rgba(14, 27, 77, 0.1);
-    padding: 5px;
-}
-.header-container {
-    padding: 20px;
-    margin-bottom: 20px;
-    background-color: #0e1b4d;
-    color: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-}
-.header-logo {
-    margin-right: 20px; /* Khoảng cách giữa logo và text */
-}
-.header-text {
-    flex: 1;
-}
-.header-title {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 5px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-}
-.header-subtitle {
-    font-size: 1.2rem;
-    color: #bfdbfe;
-}
-.fillable.svelte-1y320eu.svelte-1y320eu:not(.fill_width)
-{
-max-width: 100%; !important;
-}
-.input-panel {
-    background-color: #6194c7;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    border: 1px solid #e2e8f0;
-}
-.output-panel {
-    background-color: #6194c7;
-    border-radius: 10px;
-    padding: 15px;
-    border: 1px solid #e2e8f0;
-    margin: 0 auto; /* Giúp căn giữa panel */
-    max-width: 800px; /* Giới hạn chiều rộng khi đứng một mình */
-}
-.control-panel {
-    border-radius: 10px;
-    padding: 15px;
-    margin: 15px 0;
-    border: 1px solid #e2e8f0;
-    text-align: center;
-}
-.face-container {
-    background-color: #6194c7;
-    border-radius: 8px;
-    padding: 10px;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 10px;
-}
-.section-title {
-    font-weight: bold;
-    font-size: 1.2rem;
-    margin-bottom: 10px;
-    color: #0e1b4d; /* Giữ nguyên màu chữ xanh navy đậm */
-    padding: 5px 10px; /* Thêm padding để tạo không gian cho khung */
-    border: 2px solid #a0c8ff; /* Khung màu xanh dương nhạt */
-    border-radius: 5px; /* Bo tròn góc khung */
-    background-color: #e6f0ff; /* Nền xanh dương rất nhạt */
-    display: inline-block;
-}
-.footer {
-    text-align: center;
-    margin-top: 40px;
-    padding: 20px;
-    font-size: 0.9rem;
-    opacity: 0.7;
-    color: #000000 !important; /* Đảm bảo màu chữ đen */
-    padding: 5px 10px; 
-    border: 2px solid #a0c8ff;
-    border-radius: 5px;
-    background-color: #e6f0ff;
-}
-.face-analysis {
-    background-color: #f0f9ff;
-    border: 1px solid #a0c8ff;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 10px;
-    font-size: 1rem;
-}
-.face-recommendation {
-    background-color: #f0fff4;
-    border: 1px solid #a0ffc8;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 10px;
-    font-size: 1rem;
-}
-/* CSS cho gallery hình ảnh mẫu */
-.example-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-    width: 100%;
-}
-/* Style cho gallery và các item trong gallery */
-.gradio-gallery {
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
-    gap: 10px !important;
-    width: 100% !important;
-    overflow: hidden !important;
-}
-.gradio-gallery .thumbnail-image {
-    width: 100% !important;
-    height: 120px !important; /* Tăng chiều cao một chút để tỉ lệ đẹp hơn */
-    object-fit: cover !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    border: 2px solid transparent !important;
-}
-.gradio-gallery .thumbnail-image:hover {
-    transform: scale(1.05) !important;
-    border-color: #003d99 !important;
-    box-shadow: 0 0 10px rgba(0, 61, 153, 0.3) !important;
-}
-/* Điều chỉnh kích thước hàng và cột trong gallery */
-.wrap.svelte-p3y7hu {
-    grid-template-columns: repeat(5, 1fr) !important; /* Hiển thị chính xác 5 ảnh trong 1 hàng */
-    gap: 10px !important;
-    width: 100% !important;
-    justify-content: space-between !important;
-    padding: 0 !important;
-}
-/* Style cho container chứa gallery */
-.gallery-container {
-    width: 100% !important;
-    height: auto !important;
-    overflow-y: auto !important;
-    padding: 10px !important;
-    background-color: #f0f9ff !important;
-    border-radius: 8px !important;
-    border: 1px solid #a0c8ff !important;
-    margin-bottom: 10px !important;
-}
-/* Nút đẹp hơn */
-button.primary {
-    background-color: #003d99 !important; /* Màu xanh dương đậm hơn */
-    transition: all 0.3s ease !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.5px !important;
-    color: white !important; /* Đảm bảo chữ màu trắng */
-}
-button.primary:hover {
-    background-color: #0052cc !important; 
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
-}
-/* Nút Analyze Face Shape */
-.analyze-btn {
-    background-color: #003d99 !important;
-    color: white !important;
-    border: none !important;
-    padding: 6px 12px !important; /* Nhỏ hơn một chút */
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-    font-size: 0.9rem !important; /* Font nhỏ hơn */
-}
-.analyze-btn:hover {
-    background-color: #0052cc !important;
-    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
-}
-/* Nút Show All Wigs */
-.show-all-btn {
-    background-color: #003d99 !important;
-    color: white !important;
-    border: none !important;
-    padding: 8px 16px !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-}
-.show-all-btn:hover {
-    background-color: #0052cc !important;
-    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
-}
-/* Đảm bảo nút Try On Wig nổi bật */
-.try-on-button {
-    background-color: #003d99 !important;
-    color: white !important;
-    font-size: 1.1rem !important;
-    padding: 10px 20px !important;
-    display: block !important;
-    margin: 0 auto !important;
-    width: 80% !important;
-    max-width: 300px !important;
-    border: none !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-}
-.try-on-button:hover {
-    background-color: #0052cc !important;
-    box-shadow: 0 4px 12px rgba(0, 61, 153, 0.3) !important;
-}
-/* Custom scroll bar cho gallery */
-.gallery-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-.gallery-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-.gallery-container::-webkit-scrollbar-thumb {
-    background: #a0c8ff;
-    border-radius: 10px;
-}
-.gallery-container::-webkit-scrollbar-thumb:hover {
-    background: #6194c7;
-}
-/* Hãy đặt css riêng cho gallery */
-.wig-gallery-container {
-    width: 100%;
-    height: 320px;
-    overflow-y: auto;
-    background-color: #f0f9ff;
-    border-radius: 8px;
-    border: 1px solid #a0c8ff;
-    padding: 5px;
-    margin-bottom: 10px;
-}
-/* Style đồng nhất cho tất cả các hình ảnh */
-.image-container img,
-.gradio-image img,
-.original-image img,
-.wig-image img,
-.result-image img {
-    height: 450px !important; /* Chiều cao cố định */
-    width: 100% !important;
-    object-fit: contain !important; /* Giữ nguyên tỉ lệ ảnh */
-    max-width: 100%;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-/* Style cho container chứa hình ảnh */
-.image-display-container {
-    height: 480px !important; /* Thêm khoảng trống cho label */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: #f8fafc;
-    border-radius: 8px;
-    padding: 10px;
-    width: 100%;
-}
-/* Mobile */
-<style>
-@media (max-width:600px){
-	.gradio-container{
-		width:100% !important;
-		padding:0px !important;
-	}
-	.app.svelte-1y320eu.svelte-1y320eu{
-		padding:5px !important;
-	}
-}
-</style>
-"""
-
-# Sử dụng theme đơn giản cho các phiên bản Gradio cũ
-theme = gr.themes.Base(primary_hue="blue", secondary_hue="blue")
-
-# Đơn giản hóa WigSelector để áp dụng trực tiếp
-class WigSelector:
-    def __init__(self):
-        self.selected_wig = None
+        x1, y1, x2, y2 = map(int, face.bbox)
+        x1 = max(0, min(x1, w_frame-1))
+        y1 = max(0, min(y1, h_frame-1))
+        x2 = max(0, min(x2, w_frame))
+        y2 = max(0, min(y2, h_frame))
     
-    def select_wig_from_gallery(self, evt, gallery):
-        """Hàm này vừa chọn wig vừa trả về đường dẫn để hiển thị luôn"""
+        if x2 <= x1 or y2 <= y1:
+            print(f"Invalid bbox: {x1},{y1},{x2},{y2}")
+            return swapped_frame
+    
+        w = x2 - x1
+        h = y2 - y1
+        cutoff = int(h * (1.0 - self.blend_height_ratio))
+    
+        swap_crop = swapped_frame[y1:y2, x1:x2].copy()
+        orig_crop = original_frame[y1:y2, x1:x2].copy()
+    
+        mask = np.ones((h, w, 3), dtype=np.float32)
+        transition = 40
+    
+        if cutoff < h:
+            blend_start = max(cutoff - transition // 2, 0)
+            blend_end = min(cutoff + transition // 2, h)
+    
+            if blend_end > blend_start:
+                alpha = np.linspace(1.0, 0.0, blend_end - blend_start)[:, np.newaxis, np.newaxis]
+                mask[blend_start:blend_end, :, :] = alpha
+            mask[blend_end:, :, :] = 0.0
+    
+        blended_crop = (swap_crop.astype(np.float32) * mask + orig_crop.astype(np.float32) * (1.0 - mask)).astype(np.uint8)
+    
+        blended_frame = swapped_frame.copy()
+        blended_frame[y1:y2, x1:x2] = blended_crop
+    
+        return blended_frame
+    
+
+    def __download_with_progress(self, url, output_path):
+        response = requests.get(url, stream=True)
+        total_size = int(response.headers.get('content-length', 0))
+        block_size = 1024
+        t = tqdm(total=total_size, unit='iB', unit_scale=True, desc=f"Downloading {os.path.basename(output_path)}")
+
+        with open(output_path, 'wb') as f:
+            for data in response.iter_content(block_size):
+                t.update(len(data))
+                f.write(data)
+        t.close()
+
+        if total_size != 0 and t.n != total_size:
+            raise Exception("ERROR, something went wrong downloading the model!")
+
+    def __check_providers(self):
+        if self.force_cpu:
+            self.providers = ['CPUExecutionProvider']
+        else:
+            self.providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+
+        rt.set_default_logger_severity(4)
+        self.sess_options = rt.SessionOptions()
+        self.sess_options.execution_mode = rt.ExecutionMode.ORT_PARALLEL  # Better parallelism
+        self.sess_options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        def __check_providers(self):
+            if self.force_cpu:
+                self.providers = ['CPUExecutionProvider']
+            else:
+                self.providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+
+        rt.set_default_logger_severity(4)
+
+        self.sess_options = rt.SessionOptions()
+        self.sess_options.execution_mode = rt.ExecutionMode.ORT_PARALLEL  # Better parallelism
+        self.sess_options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        # Use a temporary model session to detect the actual active provider
+        test_model = os.path.expanduser("~/.insightface/models/buffalo_l/det_10g.onnx")
         try:
-            # Xử lý click event
-            index = None
-            
-            # Thử các cách khác nhau để lấy index
-            if isinstance(evt, int):
-                index = evt
-            elif hasattr(evt, 'index'):
-                index = evt.index 
-            elif isinstance(evt, dict) and 'index' in evt:
-                index = evt['index']
-            else:
-                try:
-                    index = int(evt)
-                except:
-                    print(f"Debug - Cannot parse index from event: {evt}")
-                    return None
-            
-            # Kiểm tra index và gallery
-            if isinstance(gallery, list) and 0 <= index < len(gallery):
-                self.selected_wig = gallery[index]
-                print(f"Selected and applied wig at index {index}: {self.selected_wig}")
-                return self.selected_wig
-            elif isinstance(gallery, list) and len(gallery) > 0:
-                # Nếu không tìm thấy index, trả về ảnh đầu tiên
-                self.selected_wig = gallery[0]
-                print(f"Fallback: Applied first wig: {self.selected_wig}")
-                return self.selected_wig
-            else:
-                print(f"Invalid gallery: {type(gallery)}")
-                return None
+          test_session = rt.InferenceSession(test_model, self.sess_options, providers=self.providers)
+          active_provider = test_session.get_providers()[0]  # First provider used
         except Exception as e:
-            print(f"Error selecting wig: {str(e)}")
-            return None
+           print(f"[ERROR] Failed to create test session: {e}")
+           active_provider = 'CPUExecutionProvider'  # Safe fallback
 
-# Khởi tạo WigSelector
-wig_selector = WigSelector()
+         # Set mode based on actual provider
+        if active_provider == 'CUDAExecutionProvider':
+           self.mode = RefacerMode.CUDA
+           self.use_num_cpus = 2
+           self.sess_options.intra_op_num_threads = 1
+        elif active_provider == 'CoreMLExecutionProvider':
+           self.mode = RefacerMode.COREML
+           self.use_num_cpus = max(mp.cpu_count() - 1, 1)
+           self.sess_options.intra_op_num_threads = int(self.use_num_cpus / 2)
+        # elif active_provider == 'TensorrtExecutionProvider':
+        elif self.colab_performance:
+           self.mode = RefacerMode.TENSORRT
+           self.use_num_cpus = max(mp.cpu_count() - 1, 1)
+           self.sess_options.intra_op_num_threads = int(self.use_num_cpus / 2)
+        else:
+           self.mode = RefacerMode.CPU
+           self.use_num_cpus = max(mp.cpu_count() - 1, 1)
+           self.sess_options.intra_op_num_threads = int(self.use_num_cpus / 2)
 
-with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs") as demo:
-    # Logo and Header
-    try:
-        with open("Logo.png", "rb") as f:
-            icon_data = base64.b64encode(f.read()).decode()
-        icon_html = f'<img src="data:image/png;base64,{icon_data}" style="width:100px;height:100px;">'
-    except FileNotFoundError:
-        icon_html = '<div style="font-size: 3rem; color: white;">💇</div>'
-    
-    gr.HTML(f"""
-    <div class="header-container">
-        <div class="header-logo">{icon_html}</div>
-        <div class="header-text">
-            <div class="header-title">MongolianWigs</div>
-            <div class="header-subtitle">Virtual Try-on System for Wigs</div>
-        </div>
-    </div>
-    """)
+        print(f"Using providers: {self.providers}")
+        print(f"Active provider: {active_provider}")
+        print(f"Mode: {self.mode}")
 
-    # --- IMAGE MODE ---
-    with gr.Tab("Image Mode"):
-        # Hàng đầu tiên: Original Face và Select Wigs
-        with gr.Row():
-            # Input Column - Face
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Original Face</div>')
-                dest_img = gr.Image(height=450, elem_classes=["original-image", "image-container"])  
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Wigs</div>')
-                image_input = gr.Image(type="filepath", height=450, elem_classes=["wig-image", "image-container"])
-            with gr.Column(scale=1):
-                gr.Markdown('<div class="section-title">Result</div>')
-                image_output = gr.Image(interactive=False, type="filepath", height=450, elem_classes=["result-image", "image-container"])  
- 
-        
-        # Hàng thứ hai: Nút Try On Wig
-        with gr.Row():
-              
-            with gr.Column(scale=1):
-                analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
-                    
-                face_shape_result = gr.Textbox(visible=False)
-            with gr.Column(scale=2):
-                gr.Markdown('<div class="section-title">Recommend For You</div>')
-                wig_gallery = gr.Gallery(
-                    value=[], 
-                    label="Recommend Wigs", 
-                    show_label=False,
-                    height=200,
-                    columns=5,
-                    elem_classes=["gallery-container"]
-                )
-            with gr.Column(scale=1):
-                image_btn = gr.Button("Try On Wig", elem_classes=["try-on-button"])
-        with gr.Row():   
-            refresh_wigs_btn = gr.Button("Show All Wigs", elem_classes=["try-on-button"])
+    def __init_apps(self):
+        assets_dir = ensure_available('models', 'buffalo_l', root='~/.insightface')
 
-        analyze_btn.click(
-            fn=wig_recommender.analyze_face_shape,
-            inputs=[dest_img],
-            outputs=[face_shape_result]
-        ).then(
-            fn=update_wig_examples,
-            inputs=[face_shape_result],
-            outputs=[wig_gallery]
-        ).then(
-            # Khi gallery cập nhật, ẩn placeholder text
-            fn=lambda: "",
-            inputs=[],
-            outputs=[]
-        )
-        
-        # Nút làm mới tóc giả (hiển thị tất cả)
-        refresh_wigs_btn.click(
-            fn=lambda: wig_recommender.get_wigs_for_face_shape("Oval"),
-            inputs=[],
-            outputs=[wig_gallery]
-        ).then(
-            # Khi gallery cập nhật, ẩn placeholder text
-            fn=lambda: "",
-            inputs=[],
-            outputs=[]
-        )
-        
-        # Khi chọn tóc giả từ gallery - dùng event select cho phiên bản Gradio cũ
-        def select_wig(evt, gallery):
+        model_path = os.path.join(assets_dir, 'det_10g.onnx')
+        sess_face = rt.InferenceSession(model_path, self.sess_options, providers=self.providers)
+        print(f"Face Detector providers: {sess_face.get_providers()}")
+        self.face_detector = SCRFD(model_path, sess_face)
+        self.face_detector.prepare(0, input_size=(640, 640))
+
+        model_path = os.path.join(assets_dir, 'w600k_r50.onnx')
+        sess_rec = rt.InferenceSession(model_path, self.sess_options, providers=self.providers)
+        print(f"Face Recognizer providers: {sess_rec.get_providers()}")
+        self.rec_app = ArcFaceONNX(model_path, sess_rec)
+        self.rec_app.prepare(0)
+
+        model_dir = os.path.join('weights', 'inswapper')
+        os.makedirs(model_dir, exist_ok=True)
+        model_path = os.path.join(model_dir, 'inswapper_128.onnx')
+
+        if not os.path.exists(model_path):
+            print(f"Model {model_path} not found. Downloading from HuggingFace...")
+            url = "https://huggingface.co/VanNguyen1214/models_swap_face/resolve/main/inswapper_128.onnx"
             try:
-                # Phiên bản Gradio khác nhau có thể truyền tham số evt khác nhau
-                if evt is None:
-                    return None
-                
-                # Trường hợp evt là index trực tiếp (số nguyên)
-                if isinstance(evt, int):
-                    index = evt
-                # Trường hợp evt là đối tượng có thuộc tính index
-                elif hasattr(evt, 'index'):
-                    index = evt.index
-                # Trường hợp evt là dictionary có key 'index'
-                elif isinstance(evt, dict) and 'index' in evt:
-                    index = evt['index']
+                self.__download_with_progress(url, model_path)
+                print(f"Downloaded {model_path}")
+                url = 'https://huggingface.co/VanNguyen1214/models_swap_face/resolve/main/best_model.pth'  # Thay bằng URL thực tế
+                filename = 'best_model.pth'
+                response = requests.get(url)
+                with open(filename, 'wb') as f:
+                    f.write(response.content)
+            except Exception as e:
+                raise RuntimeError(f"Failed to download {model_path}. Error: {e}")
+
+        sess_swap = rt.InferenceSession(model_path, self.sess_options, providers=self.providers)
+        print(f"Face Swapper providers: {sess_swap.get_providers()}")
+        self.face_swapper = INSwapper(model_path, sess_swap)
+
+    def prepare_faces(self, faces, disable_similarity=False, multiple_faces_mode=False):
+        self.replacement_faces = []
+        self.disable_similarity = disable_similarity
+        self.multiple_faces_mode = multiple_faces_mode
+
+        for face in faces:
+            if "destination" not in face or face["destination"] is None:
+                print("Skipping face config: No destination face provided.")
+                continue
+
+            _faces = self.__get_faces(face['destination'], max_num=1)
+            if len(_faces) < 1:
+                raise Exception('No face detected on "Destination face" image')
+
+            if multiple_faces_mode:
+                self.replacement_faces.append((None, _faces[0], 0.0))
+            else:
+                if "origin" in face and face["origin"] is not None and not disable_similarity:
+                    face_threshold = face['threshold']
+                    bboxes1, kpss1 = self.face_detector.autodetect(face['origin'], max_num=1)
+                    if len(kpss1) < 1:
+                        raise Exception('No face detected on "Face to replace" image')
+                    feat_original = self.rec_app.get(face['origin'], kpss1[0])
                 else:
-                    print(f"Debug - event type: {type(evt)}, value: {evt}")
-                    return None
-                
-                # Kiểm tra gallery là list hoặc dict
-                if isinstance(gallery, list) and 0 <= index < len(gallery):
-                    return gallery[index]
-                elif isinstance(gallery, dict) and index in gallery:
-                    return gallery[index]
-                return None
-            except Exception as e:
-                print(f"Debug - Error in select_wig: {str(e)}")
-                return None
-            
-        wig_gallery.select(
-            fn=select_wig,
-            inputs=[wig_gallery],
-            outputs=[image_input]
-        )
-        
-        # Try on wig
-        image_btn.click(
-            fn=run_image,
-            inputs=[image_input, dest_img],
-            outputs=image_output
-        )
+                    face_threshold = 0
+                    self.first_face = True
+                    feat_original = None
 
-    # Footer
-    gr.HTML("""
-    <div class="footer">
-        <p>MongolianWigs All rights reserved</p>
-        <p>Developed with ❤️ for virtual wig try-on</p>
-    </div>
-    """)
+                self.replacement_faces.append((feat_original, _faces[0], face_threshold))
 
-# --- ngrok connect (optional) ---
-if args.ngrok and args.ngrok != "None":
-    def connect(token, port, options):
-        try:
-            public_url = ngrok.connect(f"127.0.0.1:{port}", **options).url()
-            print(f'ngrok URL: {public_url}')
-        except Exception as e:
-            print(f'ngrok connection aborted: {e}')
+    def __get_faces(self, frame, max_num=0):
+        bboxes, kpss = self.face_detector.detect(frame, max_num=max_num, metric='default')
+        if bboxes.shape[0] == 0:
+            return []
+        ret = []
+        for i in range(bboxes.shape[0]):
+            bbox = bboxes[i, 0:4]
+            det_score = bboxes[i, 4]
+            kps = kpss[i] if kpss is not None else None
+            face = Face(bbox=bbox, kps=kps, det_score=det_score)
+            face.embedding = self.rec_app.get(frame, kps)
+            ret.append(face)
+        return ret
 
-    connect(args.ngrok, args.server_port, {'region': args.ngrok_region, 'authtoken_from_env': False})
-
-# --- Launch app ---
-if __name__ == "__main__":
-    # Loại bỏ tham số enable_api vì không được hỗ trợ trong phiên bản cũ
-    demo.launch(
-        favicon_path="Logo.png" if os.path.exists("Logo.png") else None,
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=True,
-        show_error=True,
-    )
+    def process_first_face(self, frame):
+        faces = self.__get_faces(frame, max_num=0)
+        if not faces:
+            return frame
     
-    # Nếu cần tương thích API, hãy thêm message để hướng dẫn upgrade Gradio
-    print("NOTE: To enable API functionality, upgrade Gradio to version 3.32.0 or higher.")
+        if self.disable_similarity:
+            for face in faces:
+                swapped = self.face_swapper.get(frame, face, self.replacement_faces[0][1], paste_back=True)
+                if hasattr(self, 'partial_reface_ratio') and self.partial_reface_ratio > 0.0:
+                    self.blend_height_ratio = self.partial_reface_ratio
+                    frame = self._partial_face_blend(frame, swapped, face)
+                else:
+                    frame = swapped
+        return frame
+
+    def process_faces(self, frame):
+        faces = self.__get_faces(frame, max_num=0)
+        if not faces:
+            return frame
+ 
+        faces = sorted(faces, key=lambda face: face.bbox[0])
+ 
+        if self.multiple_faces_mode:
+            for idx, face in enumerate(faces):
+                if idx >= len(self.replacement_faces):
+                    break
+                swapped = self.face_swapper.get(frame, face, self.replacement_faces[idx][1], paste_back=True)
+                if hasattr(self, 'partial_reface_ratio') and self.partial_reface_ratio > 0.0:
+                    self.blend_height_ratio = self.partial_reface_ratio
+                    frame = self._partial_face_blend(frame, swapped, face)
+                else:
+                    frame = swapped
+        elif self.disable_similarity:
+            for face in faces:
+                swapped = self.face_swapper.get(frame, face, self.replacement_faces[0][1], paste_back=True)
+                if hasattr(self, 'partial_reface_ratio') and self.partial_reface_ratio > 0.0:
+                    self.blend_height_ratio = self.partial_reface_ratio
+                    frame = self._partial_face_blend(frame, swapped, face)
+                else:
+                    frame = swapped
+        else:
+            for rep_face in self.replacement_faces:
+                for i in range(len(faces) - 1, -1, -1):
+                    sim = self.rec_app.compute_sim(rep_face[0], faces[i].embedding)
+                    if sim >= rep_face[2]:
+                        swapped = self.face_swapper.get(frame, faces[i], rep_face[1], paste_back=True)
+                        if hasattr(self, 'partial_reface_ratio') and self.partial_reface_ratio > 0.0:
+                            self.blend_height_ratio = self.partial_reface_ratio
+                            frame = self._partial_face_blend(frame, swapped, faces[i])
+                        else:
+                            frame = swapped
+                        del faces[i]
+                        break
+        return frame
+
+    def reface_group(self, faces, frames, output):
+        with ThreadPoolExecutor(max_workers=self.use_num_cpus) as executor:
+            if self.first_face:
+                results = list(tqdm(executor.map(self.process_first_face, frames), total=len(frames), desc="Processing frames"))
+            else:
+                results = list(tqdm(executor.map(self.process_faces, frames), total=len(frames), desc="Processing frames"))
+            for result in results:
+                output.write(result)
+
+    def __check_video_has_audio(self, video_path):
+        self.video_has_audio = False
+        probe = ffmpeg.probe(video_path)
+        audio_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'audio'), None)
+        if audio_stream is not None:
+            self.video_has_audio = True
+
+    def reface(self, video_path, faces, preview=False, disable_similarity=False, multiple_faces_mode=False, partial_reface_ratio=0.0):
+        original_name = osp.splitext(osp.basename(video_path))[0]
+        timestamp = str(int(time.time()))
+        filename = f"{original_name}_preview.mp4" if preview else f"{original_name}_{timestamp}.mp4"
+    
+        self.__check_video_has_audio(video_path)
+    
+        if preview:
+            os.makedirs("output/preview", exist_ok=True)
+            output_video_path = os.path.join('output', 'preview', filename)
+        else:
+            os.makedirs("output", exist_ok=True)
+            output_video_path = os.path.join('output', filename)
+    
+        self.prepare_faces(faces, disable_similarity=disable_similarity, multiple_faces_mode=multiple_faces_mode)
+        self.first_face = False if multiple_faces_mode else (faces[0].get("origin") is None or disable_similarity)
+        self.partial_reface_ratio = partial_reface_ratio
+    
+        cap = cv2.VideoCapture(video_path, cv2.CAP_FFMPEG)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        output = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+    
+        frames = []
+        frame_index = 0
+        skip_rate = 10 if preview else 1
+    
+        with tqdm(total=total_frames, desc="Extracting frames") as pbar:
+            while cap.isOpened():
+                flag, frame = cap.read()
+                if not flag:
+                    break
+                if frame_index % skip_rate == 0:
+                    frames.append(frame)
+                    if len(frames) > 300:
+                        self.reface_group(faces, frames, output)
+                        frames = []
+                        gc.collect()
+                frame_index += 1
+                pbar.update()
+    
+        cap.release()
+        if frames:
+            self.reface_group(faces, frames, output)
+        output.release()
+    
+        converted_path = self.__convert_video(video_path, output_video_path, preview=preview)
+    
+        if video_path.lower().endswith(".gif"):
+            if preview:
+                gif_output_path = os.path.join("output", "preview", os.path.basename(converted_path).replace(".mp4", ".gif"))
+            else:
+                gif_output_path = os.path.join("output", "gifs", os.path.basename(converted_path).replace(".mp4", ".gif"))
+    
+            self.__generate_gif(converted_path, gif_output_path)
+            return converted_path, gif_output_path
+    
+        return converted_path, None
+    
+   
+  
+
+
+    def __generate_gif(self, video_path, gif_output_path):
+        os.makedirs(os.path.dirname(gif_output_path), exist_ok=True)
+        print(f"Generating GIF at {gif_output_path}")
+        (
+            ffmpeg
+            .input(video_path)
+            .output(gif_output_path, vf='fps=10,scale=512:-1:flags=lanczos', loop=0)
+            .overwrite_output()
+            .run(quiet=True)
+        )
+
+    def __convert_video(self, video_path, output_video_path, preview=False):
+        if self.video_has_audio and not preview:
+            new_path = output_video_path + str(random.randint(0, 999)) + "_c.mp4"
+            in1 = ffmpeg.input(output_video_path)
+            in2 = ffmpeg.input(video_path)
+            out = ffmpeg.output(in1.video, in2.audio, new_path, video_bitrate=self.ffmpeg_video_bitrate, vcodec=self.ffmpeg_video_encoder)
+            out.run(overwrite_output=True, quiet=True)
+        else:
+            new_path = output_video_path
+        print(f"Refaced video saved at: {os.path.abspath(new_path)}")
+        return new_path
+
+    def reface_image(self, image_path, faces, disable_similarity=False, multiple_faces_mode=False, partial_reface_ratio=0.0):
+         self.prepare_faces(faces, disable_similarity=disable_similarity, multiple_faces_mode=multiple_faces_mode)
+         self.first_face = False if multiple_faces_mode else (faces[0].get("origin") is None or disable_similarity)
+         self.partial_reface_ratio = partial_reface_ratio
+ 
+         ext = osp.splitext(image_path)[1].lower()
+         os.makedirs("output", exist_ok=True)
+         original_name = osp.splitext(osp.basename(image_path))[0]
+         timestamp = str(int(time.time()))
+ 
+         if ext in ['.tif', '.tiff']:
+             pil_img = Image.open(image_path)
+             frames = []
+ 
+             page_count = 0
+             try:
+                 while True:
+                     pil_img.seek(page_count)
+                     page_count += 1
+             except EOFError:
+                 pass
+ 
+             pil_img = Image.open(image_path)
+ 
+             with tqdm(total=page_count, desc="Processing TIFF pages") as pbar:
+                 for page in range(page_count):
+                     pil_img.seek(page)
+                     bgr_image = cv2.cvtColor(np.array(pil_img.convert('RGB')), cv2.COLOR_RGB2BGR)
+                     refaced_bgr = self.process_first_face(bgr_image.copy()) if self.first_face else self.process_faces(bgr_image.copy())
+                     enhanced_bgr = enhance_image_memory(refaced_bgr)
+                     enhanced_rgb = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
+                     enhanced_pil = Image.fromarray(enhanced_rgb)
+                     frames.append(enhanced_pil)
+                     pbar.update(1)
+ 
+             output_path = os.path.join("output", f"{original_name}_{timestamp}.tif")
+             frames[0].save(output_path, save_all=True, append_images=frames[1:], compression="tiff_deflate")
+             print(f"Saved multipage refaced TIFF to {output_path}")
+             return output_path
+ 
+         else:
+             bgr_image = cv2.imread(image_path)
+             if bgr_image is None:
+                 raise ValueError("Failed to read input image")
+ 
+             refaced_bgr = self.process_first_face(bgr_image.copy()) if self.first_face else self.process_faces(bgr_image.copy())
+             refaced_rgb = cv2.cvtColor(refaced_bgr, cv2.COLOR_BGR2RGB)
+             pil_img = Image.fromarray(refaced_rgb)
+             filename = f"{original_name}_{timestamp}.jpg"
+             output_path = os.path.join("output", filename)
+             pil_img.save(output_path, format='JPEG', quality=100, subsampling=0)
+             output_path = enhance_image(output_path)
+             print(f"Saved refaced image to {output_path}")
+             return output_path
+
+
+    def extract_faces_from_image(self, image_path, max_faces=5):
+        frame = cv2.imread(image_path)
+        if frame is None:
+            raise ValueError("Failed to read input image for face extraction.")
+
+        faces = self.__get_faces(frame, max_num=max_faces)
+        cropped_faces = []
+
+        for face in faces:
+            x1, y1, x2, y2 = map(int, face.bbox)
+            x1 = max(x1, 0)
+            y1 = max(y1, 0)
+            x2 = min(x2, frame.shape[1])
+            y2 = min(y2, frame.shape[0])
+
+            cropped = frame[y1:y2, x1:x2]
+            pil_img = Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB))
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, dir="./tmp", suffix=".png")
+            pil_img.save(temp_file.name)
+            cropped_faces.append(temp_file.name)
+
+            if len(cropped_faces) >= max_faces:
+                break
+
+        return cropped_faces
+
+    def __try_ffmpeg_encoder(self, vcodec):
+        command = ['ffmpeg', '-y', '-f', 'lavfi', '-i', 'testsrc=duration=1:size=1280x720:rate=30', '-vcodec', vcodec, 'testsrc.mp4']
+        try:
+            subprocess.run(command, check=True, capture_output=True).stderr
+        except subprocess.CalledProcessError:
+            return False
+        return True
+
+    def __check_encoders(self):
+        self.ffmpeg_video_encoder = 'libx264'
+        self.ffmpeg_video_bitrate = '0'
+        pattern = r"encoders: ([a-zA-Z0-9_]+(?: [a-zA-Z0-9_]+)*)"
+        command = ['ffmpeg', '-codecs', '--list-encoders']
+        commandout = subprocess.run(command, check=True, capture_output=True).stdout
+        result = commandout.decode('utf-8').split('\n')
+        for r in result:
+            if "264" in r:
+                encoders = re.search(pattern, r)
+                if encoders:
+                    for v_c in Refacer.VIDEO_CODECS:
+                        for v_k in encoders.group(1).split(' '):
+                            if v_c == v_k and self.__try_ffmpeg_encoder(v_k):
+                                self.ffmpeg_video_encoder = v_k
+                                self.ffmpeg_video_bitrate = Refacer.VIDEO_CODECS[v_k]
+                                return
+
+    VIDEO_CODECS = {
+        'h264_videotoolbox': '0',
+        'h264_nvenc': '0',
+        'libx264': '0'
+    }
