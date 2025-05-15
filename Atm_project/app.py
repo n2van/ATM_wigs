@@ -131,9 +131,8 @@ for shape in face_shapes:
         os.makedirs(face_shape_folder)
         print(f"Đã tạo thư mục '{face_shape_folder}' cho kiểu khuôn mặt {shape}.")
 
-# Hàm tải các hình ảnh tóc giả mẫu - có thể bỏ và dùng wig_recommender.get_all_wigs()
 def load_example_wigs():
-    return wig_recommender.get_all_wigs()
+    return wig_recommender.get_wigs_for_face_shape("Oval")
 
 # Hàm tải hình ảnh tóc giả theo hình dạng khuôn mặt - có thể bỏ và dùng wig_recommender.get_wigs_for_face_shape()
 def load_wigs_for_face_shape(face_shape):
@@ -261,7 +260,7 @@ def update_wig_examples(face_shape_result):
                 return wigs
     
     # Mặc định hiển thị tất cả tóc giả nếu không phân tích được khuôn mặt
-    all_wigs = wig_recommender.get_all_wigs()
+    all_wigs = wig_recommender.get_wigs_for_face_shape("Oval")
     return all_wigs
 
 def update_dropdown(gallery_images):
@@ -278,7 +277,7 @@ def update_dropdown(gallery_images):
 # Cập nhật refresh wigs button
 def refresh_wigs():
     try:
-        wigs = wig_recommender.get_all_wigs()
+        wigs = wig_recommender.get_wigs_for_face_shape("Oval")
         if not wigs or not isinstance(wigs, list):
             print("No wigs found or invalid result from get_all_wigs")
             wigs = []
@@ -729,7 +728,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
         
         # Nút làm mới tóc giả (hiển thị tất cả)
         refresh_wigs_btn.click(
-            fn=lambda: wig_recommender.get_all_wigs(),
+            fn=lambda: wig_recommender.get_wigs_for_face_shape("Oval"),
             inputs=[],
             outputs=[wig_gallery]
         ).then(
