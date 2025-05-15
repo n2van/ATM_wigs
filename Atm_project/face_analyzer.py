@@ -67,7 +67,7 @@ class FaceWigRecommender:
             wigs: Danh sách đường dẫn đến các file tóc giả
         """
         if not face_shape or face_shape not in self.face_shapes:
-            return self.get_all_wigs()
+            return self.get_wigs_for_face_shape("Oval")
         
         wigs = []
         face_shape_wig_folder = f"./example_wigs/{face_shape}"
@@ -81,35 +81,7 @@ class FaceWigRecommender:
         # Nếu không có tóc giả trong thư mục hình dạng mặt, 
         # trả về tất cả các file
         if not wigs:
-            wigs = self.get_all_wigs()
+            wigs = self.get_wigs_for_face_shape("Oval")
         
         return wigs
     
-    def get_all_wigs(self):
-        """
-        Lấy tất cả tóc giả mẫu từ thư mục example_wigs
-        
-        Returns:
-            wigs: Danh sách đường dẫn đến tất cả các file tóc giả
-        """
-        wigs = []
-        wig_folder = "./example_wigs"
-        
-        if os.path.exists(wig_folder):
-            # Tìm kiếm file trong thư mục gốc
-            for file in os.listdir(wig_folder):
-                file_path = os.path.join(wig_folder, file)
-                if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    wigs.append(file_path)
-            
-            # Tìm kiếm trong các thư mục con của hình dạng khuôn mặt
-            for shape in self.face_shapes:
-                shape_folder = os.path.join(wig_folder, shape)
-                if os.path.exists(shape_folder):
-                    for file in os.listdir(shape_folder):
-                        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            shape_wig_path = os.path.join(shape_folder, file)
-                            if shape_wig_path not in wigs:
-                                wigs.append(shape_wig_path)
-        
-        return wigs 
