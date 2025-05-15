@@ -770,7 +770,7 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
             
         wig_gallery.select(
             fn=select_wig,
-            inputs=[select_wig],
+            inputs=[wig_gallery],
             outputs=[image_input]
         )
         
