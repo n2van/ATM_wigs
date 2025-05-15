@@ -139,6 +139,17 @@ def load_example_wigs():
 def load_wigs_for_face_shape(face_shape):
     return wig_recommender.get_wigs_for_face_shape(face_shape)
 
+# Hàm tải mặc định các tóc giả cho khuôn mặt Oval
+def load_default_oval_wigs():
+    return wig_recommender.get_wigs_for_face_shape("Oval")
+
+# Hàm lấy tóc giả đầu tiên từ danh sách tóc giả Oval
+def get_first_oval_wig():
+    oval_wigs = wig_recommender.get_wigs_for_face_shape("Oval")
+    if oval_wigs and len(oval_wigs) > 0:
+        return oval_wigs[0]
+    return None
+
 # Parse arguments
 parser = argparse.ArgumentParser(description='Refacer')
 parser.add_argument("--max_num_faces", type=int, default=1)  # Changed from 8 to 1
@@ -231,7 +242,12 @@ def distribute_faces(filepath):
 
 # Hàm phân tích khuôn mặt - có thể bỏ vì đã có hàm tương tự trong FaceWigRecommender
 def analyze_face_shape(image):
+    if image is None:
+        return "Hình dạng khuôn mặt: Oval (Mặc định)"
     face_shape, result_text = wig_recommender.analyze_face_shape(image)
+    # Nếu không phát hiện được khuôn mặt, trả về mặc định là Oval
+    if not face_shape or "không thể phân tích" in result_text.lower():
+        return "Hình dạng khuôn mặt: Oval (Mặc định)"
     return result_text
 
 # Hàm cập nhật hiển thị tóc giả dựa trên kết quả phân tích
@@ -286,12 +302,17 @@ def load_wig_example(example_path):
 
 # Hàm phân tích khuôn mặt và hiển thị các tóc giả phù hợp
 def analyze_and_recommend(image):
+    # Nếu không có ảnh, mặc định trả về khuôn mặt Oval
+    if image is None:
+        return load_default_oval_wigs()
+    
     face_shape, result_text = wig_recommender.analyze_face_shape(image)
     if face_shape:
         # Lấy danh sách tóc giả phù hợp
         wigs = wig_recommender.get_wigs_for_face_shape(face_shape)
         return wigs if wigs else []
-    return wig_recommender.get_all_wigs()
+    # Mặc định trả về tóc giả Oval nếu không phân tích được
+    return load_default_oval_wigs()
 
 # --- CSS tùy chỉnh ---
 # Thêm vào phần CSS
@@ -629,17 +650,7 @@ class WigSelector:
             print(f"Error selecting wig: {str(e)}")
             return None
 
-# Hàm tải mặc định tóc giả cho khuôn mặt Oval
-def load_default_oval_wigs():
-    # Mặc định hiển thị tóc giả cho khuôn mặt Oval
-    return wig_recommender.get_wigs_for_face_shape("Oval")
-
-# Hàm lấy tóc giả đầu tiên từ danh sách tóc giả Oval
-def get_first_oval_wig():
-    oval_wigs = wig_recommender.get_wigs_for_face_shape("Oval")
-    if oval_wigs and len(oval_wigs) > 0:
-        return oval_wigs[0]
-    return None
+# Khởi tạo WigSelector
 
 # Khởi tạo WigSelector
 wig_selector = WigSelector()
@@ -686,8 +697,8 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
                 analyze_btn = gr.Button("Analyze Face Shape", elem_classes=["try-on-button"])
             with gr.Column(scale=2):
                 gr.Markdown('<div class="section-title">Recommend For You</div>')
-                wig_gallery = gr.Gallery(
-                    value=load_default_oval_wigs(), 
+                # Mặc định hiển thị tóc giả cho khuôn mặt Oval
+                wig_gallery = gr.Gallery(value=load_default_oval_wigs(),
                     label="Recommend Wigs", 
                     show_label=False,
                     height=200,
