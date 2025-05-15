@@ -758,18 +758,27 @@ with gr.Blocks(theme=theme, css=custom_css, title="<MongolianWigs - Try-on Wigs"
                     print(f"Debug - event type: {type(evt)}, value: {evt}")
                     return None
                 
-                # Kiểm tra gallery là list hoặc dict
+                # Kiểm tra gallery là list hoặc dict và trả về index thay vì phần tử
                 if isinstance(gallery, list) and 0 <= index < len(gallery):
-                    return gallery[index]
+                    print(f"Selected wig at index {index}")
+                    return index
                 elif isinstance(gallery, dict) and index in gallery:
-                    return gallery[index]
+                    print(f"Selected wig at index {index}")
+                    return index
                 return None
             except Exception as e:
                 print(f"Debug - Error in select_wig: {str(e)}")
                 return None
             
+        # Hàm trung gian để chuyển đổi index thành đường dẫn ảnh
+        def select_wig_and_get_path(evt, gallery):
+            index = select_wig(evt, gallery)
+            if index is not None and isinstance(gallery, list) and 0 <= index < len(gallery):
+                return gallery[index]
+            return None
+            
         wig_gallery.select(
-            fn=select_wig,
+            fn=select_wig_and_get_path,
             inputs=[wig_gallery],
             outputs=[image_input]
         )
